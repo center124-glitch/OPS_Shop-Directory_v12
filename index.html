@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover">
+<meta name="theme-color" content="#0B0F1A">
+<title>SBK Directory · ทำเนียบร้านค้า Seacon Bangkae</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   คอนเซปต์: "Elevator Panel" — แต่ละชั้นของห้าง มีสีประจำชั้น
+   เหมือนปุ่มลิฟต์จริง กดแล้วติดไฟ เพื่อให้จำง่ายและสนุกขึ้น
+══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#F6F7FB; --surface:#ffffff; --surface2:#F0F1F6; --surface3:#E7E9F0;
+  --border:#E2E4ED; --t1:#12131A; --t2:#4B4D5C; --t3:#8688A0; --t4:#B8BACC;
+  --mono:'JetBrains Mono',monospace; --disp:'Kanit',system-ui,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1); --sp:cubic-bezier(.34,1.56,.64,1);
+  --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:28px;
+  --s1:0 1px 2px rgba(20,20,40,.06);
+  --s2:0 6px 16px -4px rgba(20,20,40,.10);
+  --s3:0 16px 32px -8px rgba(20,20,40,.16);
+
+  /* floor accent colors — เหมือนปุ่มไฟลิฟต์แต่ละชั้น */
+  --f-B:#6D5DF4; --f-1:#F0407A; --f-2:#F5A524; --f-3:#18B584; --f-4:#0EA5C4; --f-5:#8B5CF6; --f-6:#EF6FA5; --f-ALL:#12131A;
+  /* พื้นหลังไล่สีสดใส ฟ้า-เขียว-ส้ม-แดง ให้ความรู้สึกสนุก มีชีวิตชีวา
+     (การ์ด/แผงต่างๆ ยังคงพื้นผิวขาวทึบด้านบน จึงยังอ่านง่าย ไม่ตีกับพื้นหลัง) */
+  --bg-gradient: linear-gradient(150deg,#0EA5E9 0%,#22C55E 32%,#F59E0B 66%,#EF4444 100%);
+}
+.dark{
+  --bg:#0A0C14; --surface:#12141F; --surface2:#1A1D2C; --surface3:#232739;
+  --border:#262A3C; --t1:#F2F3F8; --t2:#B7B9CC; --t3:#7C7F97; --t4:#4A4D63;
+  --s1:0 1px 2px rgba(0,0,0,.3); --s2:0 6px 16px -4px rgba(0,0,0,.4); --s3:0 20px 40px -8px rgba(0,0,0,.55);
+  --f-ALL:#F2F3F8;
+  --bg-gradient: linear-gradient(150deg,#0C4A6E 0%,#14532D 32%,#78350F 66%,#7F1D1D 100%);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--disp);color:var(--t1);min-height:100dvh;
+  /* พื้นหลังไล่สีขยายใหญ่กว่าจอ + เลื่อนตำแหน่งช้าๆ ให้ความรู้สึกมีชีวิต ไม่นิ่งทื่อ
+     (background-size ใหญ่กว่า 100% จึงเลื่อนได้โดยไม่เห็นขอบสีขาดตอน) */
+  background:var(--bg-gradient);background-size:280% 280%;
+  animation:bgFlow 22s ease infinite;
+  -webkit-font-smoothing:antialiased;transition:background .35s var(--ease),color .35s var(--ease);
+  padding-bottom:calc(6.5rem + env(safe-area-inset-bottom));
+}
+@keyframes bgFlow{0%{background-position:0% 30%}50%{background-position:100% 70%}100%{background-position:0% 30%}}
+button,input,select{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer;touch-action:manipulation}
+/* ปุ่มทุกปุ่มตั้งเป็น containing block + ตัดขอบไว้ล่วงหน้า เพื่อให้เอฟเฟกต์ ripple (แตกวงคลื่นตอนแตะ)
+   ที่แทรกด้วย JS มีขอบเขตชัดเจน ไม่ล้นออกนอกทรงปุ่ม */
+button{position:relative;overflow:hidden}
+.ripple-fx{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);
+  transform:scale(0);animation:rippleFx .6s ease-out forwards;pointer-events:none}
+@keyframes rippleFx{to{transform:scale(2.6);opacity:0}}
+input[type=text],input[type=tel],select{font-size:16px}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(120,120,150,.25);border-radius:99px}
+:focus-visible{outline:2px solid var(--f-3);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ══════════ TOPBAR ══════════ */
+.topbar{
+  position:sticky;top:0;z-index:120;
+  padding:1rem max(1rem,env(safe-area-inset-left)) 1rem max(1rem,env(safe-area-inset-right));
+  background:color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+  position:sticky;box-shadow:var(--s2);
+}
+/* แถบไล่สีแบรนด์ด้านล่าง Header — ให้ Header เด่นและจำได้ทันทีว่าเป็น SBK
+   ใช้สีเดียวกับพื้นหลังไล่เฉดของทั้งแอป เพื่อผูกอัตลักษณ์เข้าด้วยกัน */
+.topbar::after{
+  content:'';position:absolute;left:0;right:0;bottom:-3px;height:3px;
+  background:linear-gradient(90deg,#0EA5E9,#22C55E,#F59E0B,#EF4444);
+}
+.brand{display:flex;align-items:center;gap:.7rem;flex-shrink:0}
+.brand-mark{
+  width:46px;height:46px;border-radius:13px;flex-shrink:0;position:relative;overflow:hidden;
+  background:linear-gradient(150deg,#6D5DF4,#0EA5C4 55%,#18B584);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;
+  box-shadow:0 8px 20px -4px rgba(109,93,244,.6), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.brand-txt{line-height:1.1}
+.brand-txt b{font-size:1.2rem;font-weight:900;letter-spacing:-.03em;display:block}
+.brand-txt span{font-size:.7rem;color:var(--t3);font-weight:600}
+.top-search{flex:1;min-width:160px;max-width:440px;position:relative}
+.top-search input{
+  width:100%;height:42px;background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:var(--r-sm);padding:0 2.4rem 0 2.6rem;font-size:16px;color:var(--t1);
+  transition:all .2s var(--ease);
+}
+.top-search input:focus{border-color:var(--f-3);box-shadow:0 0 0 4px color-mix(in srgb, var(--f-3) 15%, transparent);background:var(--surface)}
+.top-search i.ico{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--t4);font-size:.85rem}
+.top-search .clear{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--t3);opacity:0;transition:opacity .15s}
+.top-search .clear.show{opacity:1}
+.top-search .clear:hover{background:var(--surface3)}
+.top-actions{display:flex;gap:.4rem;margin-left:auto;flex-shrink:0;align-items:center}
+.ic-btn{
+  width:42px;height:42px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;
+  background:var(--surface2);border:1px solid var(--border);color:var(--t2);font-size:.9rem;transition:all .2s var(--ease);
+}
+.ic-btn:hover{background:var(--surface3);color:var(--t1)}
+.ic-btn:active{transform:scale(.9)}
+.dark .ic-btn.theme i{color:#FBBF24}
+/* ปุ่ม "เพิ่มร้านค้า" แบบมีข้อความ — วางไว้ใน Header ให้เห็นชัดเจนเสมอ
+   แทนที่จะพึ่ง FAB ลอยอย่างเดียว (ผู้ใช้บอกว่าหาไม่เจอ) */
+.btn-add-header{
+  height:42px;padding:0 1rem;border-radius:var(--r-sm);display:flex;align-items:center;gap:.5rem;
+  background:linear-gradient(135deg,#6D5DF4,#0EA5C4);color:#fff;font-weight:700;font-size:.85rem;
+  box-shadow:0 6px 16px -4px rgba(109,93,244,.5);transition:transform .18s var(--sp);white-space:nowrap;
+}
+.btn-add-header:active{transform:scale(.94)}
+@media(max-width:520px){.btn-add-header .txt{display:none}}
+
+/* ══════════ ELEVATOR PANEL — signature element ══════════ */
+.elev-wrap{padding:1rem max(1rem,env(safe-area-inset-left)) 0}
+.elev-panel{
+  background:linear-gradient(180deg,var(--surface),var(--surface2));
+  border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:.9rem;box-shadow:var(--s1);position:relative;overflow:hidden;
+}
+.elev-label{display:flex;align-items:center;gap:.4rem;font-size:.68rem;font-weight:700;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:.65rem;padding:0 .15rem}
+.elev-label i{color:var(--t4)}
+.elev-row{display:flex;gap:.5rem;overflow-x:auto;padding:.15rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.elev-row::-webkit-scrollbar{display:none}
+.elev-btn{
+  --fc:var(--f-ALL);
+  flex-shrink:0;scroll-snap-align:start;min-width:88px;height:98px;border-radius:18px;
+  /* พาสเทลไล่เฉด + เงาวาว: ใช้ color-mix กับ white/black ตรงๆ (ไม่พึ่ง var(--surface))
+     เพื่อให้สีสดใสเหมือนกันทั้งโหมดมืด/สว่างตามที่ผู้ใช้ต้องการ ไม่ถูกทำให้หม่นในดาร์กโหมด */
+  background:linear-gradient(135deg, color-mix(in srgb, var(--fc) 30%, white 70%) 0%, color-mix(in srgb, var(--fc) 10%, white 90%) 100%);
+  border:1.5px solid color-mix(in srgb, var(--fc) 32%, transparent);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;
+  transition:transform .18s var(--sp),background .25s var(--ease),border-color .25s,box-shadow .25s;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 12px -4px color-mix(in srgb, var(--fc) 35%, transparent);
+}
+/* เงาวาว (glossy sheen) — แถบแสงทแยงมุมลอยอยู่บนพื้นสี ให้ความรู้สึกเงาเหมือนการ์ดพรีเมียม */
+.elev-btn::before{
+  content:'';position:absolute;top:-70%;left:-25%;width:65%;height:220%;
+  background:linear-gradient(120deg, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
+  transform:rotate(14deg);pointer-events:none;
+}
+.elev-btn .fl{font-family:var(--mono);font-weight:800;font-size:2.05rem;transition:color .25s;line-height:1;
+  color:color-mix(in srgb, var(--fc) 82%, black 20%);position:relative}
+.elev-btn .ct{font-size:.92rem;font-weight:700;transition:color .25s;position:relative;
+  color:color-mix(in srgb, var(--fc) 70%, black 12%)}
+.elev-btn::after{
+  content:'';position:absolute;inset:0;border-radius:18px;opacity:0;
+  background:radial-gradient(circle at 50% 30%, var(--fc), transparent 70%);
+  transition:opacity .3s var(--ease);
+}
+.elev-btn:active{transform:scale(.92)}
+.elev-btn.on{
+  background:var(--fc);border-color:var(--fc);
+  box-shadow:0 6px 18px -4px color-mix(in srgb, var(--fc) 65%, transparent), inset 0 1px 0 rgba(255,255,255,.25);
+  animation:elevDing .45s var(--sp);
+}
+.elev-btn.on .fl,.elev-btn.on .ct{color:#fff}
+.elev-btn.on::after{opacity:.25}
+
+/* ปุ่ม "ทุกชั้น" (ไอคอนร้านค้า) — ทำเป็นการ์ดสรุปกว้างกว่าปุ่มชั้นอื่น เพราะเป็นตัวเลขภาพรวม
+   ที่สำคัญที่สุด (รวมยอดร้านค้าทั้งหมด) ต่างจากปุ่มชั้นเดี่ยวๆ ที่ควรมีขนาดเท่ากันหมด
+   จึงให้สีสันติดตัวถาวร ไม่ต้องรอกดถึงจะเห็นสี */
+.elev-btn.all-btn{
+  min-width:190px;height:98px;flex-direction:row;justify-content:space-between;padding:0 1.2rem;
+  background:linear-gradient(135deg,#0EA5C4,#18B584);border:none;box-shadow:0 6px 18px -4px rgba(14,165,196,.45);
+}
+.elev-btn.all-btn .fl{color:#fff;font-size:2.3rem}
+.elev-btn.all-btn .ct{color:rgba(255,255,255,.92);font-size:.88rem;text-align:right}
+.elev-btn.all-btn .ct b{display:block;font-family:var(--mono);font-size:1.6rem;color:#fff;line-height:1.1}
+.elev-btn.all-btn.on{box-shadow:0 0 0 3px #fff, 0 6px 18px -4px rgba(14,165,196,.6)}
+.elev-btn.all-btn::after{display:none}
+@keyframes elevDing{0%{transform:scale(.85)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+/* ══════════ GRID / CARDS ══════════ */
+.grid-head{display:flex;align-items:center;justify-content:space-between;padding:.4rem max(1rem,env(safe-area-inset-left)) .5rem}
+.grid-head h2{font-size:1rem;font-weight:700}
+.gh-right{display:flex;align-items:center;gap:.6rem}
+.grid-head span{font-size:.78rem;color:var(--t3)}
+/* สวิตช์สลับมุมมอง Grid/Table — ใช้ปุ่มคู่แบบ segmented control ให้เห็นสถานะปัจจุบันชัดเจน */
+.view-switch{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:2px;gap:2px}
+.vs-btn{width:30px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:.8rem;transition:all .18s var(--ease)}
+.vs-btn.on{background:linear-gradient(135deg,#6D5DF4,#0EA5C4);color:#fff;box-shadow:0 2px 8px -2px rgba(109,93,244,.5)}
+.vs-btn:not(.on):hover{color:var(--t1);background:var(--surface3)}
+
+/* ══════════ TABLE VIEW ══════════
+   โหมดตาราง เหมาะกับการไล่ดูข้อมูลจำนวนมากทีเดียว/เทียบเบอร์โทรหลายร้าน
+   ต่างจาก Grid ที่เน้นดูทีละร้านสวยๆ — ให้ผู้ใช้เลือกตามงานที่ทำ */
+#listContainer.table-mode{
+  display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--s1);
+}
+.sbk-table{width:100%;border-collapse:collapse;min-width:680px}
+.sbk-table thead th{
+  position:sticky;top:0;z-index:2;background:var(--surface2);text-align:left;font-size:.7rem;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.05em;padding:.7rem .85rem;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+.sbk-table tbody td{padding:.6rem .85rem;font-size:.85rem;border-bottom:1px solid var(--border);color:var(--t1);vertical-align:middle}
+.sbk-table tbody tr:last-child td{border-bottom:none}
+.sbk-table tbody tr{transition:background .15s}
+.sbk-table tbody tr:hover{background:var(--surface2)}
+.tbl-room{font-family:var(--mono);font-weight:700;color:#fff;background:var(--fc);padding:.2rem .55rem;
+  border-radius:7px;display:inline-flex;white-space:nowrap;font-size:.74rem}
+.tbl-floor{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;color:color-mix(in srgb, var(--fc) 78%, black 20%)}
+.tbl-floor i{width:8px;height:8px;border-radius:50%;background:var(--fc);display:inline-block}
+.tbl-name{font-weight:700}
+.tbl-en{color:var(--t3);font-size:.78rem}
+.tbl-tel a{color:var(--t2);text-decoration:none}
+.tbl-tel a:hover{color:var(--f-3);text-decoration:underline}
+.tbl-actions{display:flex;gap:.3rem}
+.tbl-actions button{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--t3);background:var(--surface2);font-size:.72rem;transition:all .15s}
+.tbl-actions button:hover{background:var(--surface3);color:var(--t1)}
+.tbl-actions .del:hover{color:#EF4444;background:#FEE2E2}
+.dark .tbl-actions .del:hover{background:rgba(239,68,68,.15)}
+
+.grid{
+  padding:0 max(1rem,env(safe-area-inset-left)) 1rem;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.75rem;
+}
+/* จอแคบมากแบบ iPhone SE (320px) / Android จอเล็ก: บังคับคอลัมน์เดียว
+   กัน minmax ดันการ์ดล้นแนวนอนจนต้องเลื่อนซ้าย-ขวา ซึ่งใช้งานจริงบนมือถือไม่ได้ */
+@media(max-width:380px){
+  .grid{grid-template-columns:1fr}
+}
+.shop-card{
+  /* พาสเทลไล่เฉด + เงาวาว แบบเดียวกับปุ่มชั้น เพื่อให้ภาพรวมทั้งแอปเป็นภาษาดีไซน์เดียวกัน
+     ใช้ color-mix กับ white ตรงๆ ไม่พึ่ง var(--surface) จึงสีสดใสเท่ากันทั้งโหมดมืด/สว่าง */
+  background:linear-gradient(135deg, color-mix(in srgb, var(--fc) 16%, white 84%) 0%, color-mix(in srgb, var(--fc) 5%, white 95%) 100%);
+  border:1px solid color-mix(in srgb, var(--fc) 28%, transparent);border-radius:var(--r-md);
+  padding:.9rem 1rem;position:relative;overflow:hidden;
+  box-shadow:0 4px 12px -4px color-mix(in srgb, var(--fc) 30%, transparent);
+  opacity:0;transform:translateY(10px);transition:opacity .4s var(--ease),transform .4s var(--ease),box-shadow .2s;
+}
+.shop-card.visible{opacity:1;transform:none}
+.shop-card:hover{box-shadow:0 14px 28px -8px color-mix(in srgb, var(--fc) 50%, transparent);transform:translateY(-3px) scale(1.012)}
+.shop-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--fc)}
+/* เงาวาวทแยงมุมบนการ์ด */
+.shop-card::after{
+  content:'';position:absolute;top:-80%;left:-30%;width:55%;height:240%;
+  background:linear-gradient(120deg, rgba(255,255,255,.5), rgba(255,255,255,0) 65%);
+  transform:rotate(12deg);pointer-events:none;
+}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.4rem;padding-left:.35rem;position:relative}
+.sc-room{font-family:var(--mono);font-size:.78rem;font-weight:700;color:#fff;background:var(--fc);
+  padding:.15rem .5rem;border-radius:7px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap}
+.sc-actions{display:flex;gap:.3rem;flex-shrink:0}
+.sc-actions button{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  color:color-mix(in srgb, var(--fc) 60%, black 15%);background:color-mix(in srgb, var(--fc) 14%, white 86%);font-size:.72rem;transition:all .15s}
+.sc-actions button:hover{background:color-mix(in srgb, var(--fc) 28%, white 72%);color:color-mix(in srgb, var(--fc) 80%, black 25%)}
+.sc-actions .del:hover{color:#EF4444;background:#FEE2E2}
+.dark .sc-actions .del:hover{background:rgba(239,68,68,.15)}
+.sc-name{padding-left:.35rem;font-weight:800;font-size:1.05rem;line-height:1.3;position:relative;
+  color:color-mix(in srgb, var(--fc) 82%, black 28%)}
+.sc-en{padding-left:.35rem;font-size:.82rem;margin-top:.05rem;position:relative;
+  color:color-mix(in srgb, var(--fc) 62%, black 12%);opacity:.85}
+.sc-meta{padding-left:.35rem;margin-top:.5rem;display:flex;flex-direction:column;gap:.3rem;position:relative}
+.sc-meta a,.sc-meta .zn{display:flex;align-items:center;gap:.4rem;font-size:.82rem;text-decoration:none;
+  color:color-mix(in srgb, var(--fc) 66%, black 18%)}
+.sc-meta a i,.sc-meta .zn i{width:14px;color:color-mix(in srgb, var(--fc) 70%, black 10%);font-size:.75rem}
+.sc-meta a:hover{color:color-mix(in srgb, var(--fc) 90%, black 10%);text-decoration:underline}
+
+.empty{grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--t3)}
+.empty .ic{font-size:2.4rem;margin-bottom:.6rem;display:block}
+.empty h3{color:var(--t1);font-size:1.05rem;margin-bottom:.3rem}
+.empty button{margin-top:1rem;padding:.55rem 1.1rem;border-radius:var(--r-sm);background:var(--t1);color:var(--surface);font-weight:600;font-size:.82rem;display:inline-flex;gap:.4rem;align-items:center}
+
+/* ══════════ FAB ══════════ */
+.fab{
+  position:fixed;right:max(1.1rem,env(safe-area-inset-right));bottom:calc(1.3rem + env(safe-area-inset-bottom));
+  width:58px;height:58px;border-radius:50%;z-index:150;
+  background:linear-gradient(150deg,#6D5DF4,#0EA5C4);color:#fff;font-size:1.3rem;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -6px rgba(109,93,244,.55);
+  transition:transform .25s var(--sp);
+  animation:fabPulse 2.8s ease-in-out infinite;
+}
+/* จังหวะเรืองแสงเบาๆ รอบปุ่มเพิ่มร้าน ให้สายตาสังเกตเห็นได้ง่ายตอนไล่ดูรายการยาวๆ
+   โดยไม่แรงเกินจนรำคาญ (ขยาย/หด box-shadow เท่านั้น ไม่ขยับตำแหน่งปุ่ม) */
+@keyframes fabPulse{0%,100%{box-shadow:0 10px 24px -6px rgba(109,93,244,.55)}50%{box-shadow:0 10px 30px -2px rgba(109,93,244,.85),0 0 0 6px rgba(109,93,244,.12)}}
+.fab:active{transform:scale(.9);animation-play-state:paused}
+.fab i{transition:transform .3s var(--ease)}
+.fab.rot i{transform:rotate(135deg)}
+
+/* ══════════ DRAWER (Add/Edit) ══════════ */
+.drawer-bg{position:fixed;inset:0;background:rgba(10,12,20,.55);backdrop-filter:blur(2px);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+.drawer-bg.show{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;left:0;right:0;bottom:0;z-index:201;background:var(--surface);
+  border-radius:24px 24px 0 0;max-height:88dvh;overflow-y:auto;
+  padding:1.1rem 1.1rem calc(1.5rem + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .35s var(--sp);box-shadow:0 -20px 50px -10px rgba(0,0,0,.3);
+}
+.drawer.show{transform:translateY(0)}
+@media(min-width:720px){
+  .drawer{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.96);
+    width:min(520px,92vw);border-radius:24px;opacity:0;pointer-events:none;max-height:86dvh}
+  .drawer.show{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+}
+.drawer-handle{width:40px;height:5px;background:var(--surface3);border-radius:99px;margin:0 auto .9rem}
+@media(min-width:720px){.drawer-handle{display:none}}
+.drawer-head{display:flex;align-items:center;gap:.7rem;margin-bottom:1.1rem}
+.drawer-head .di{width:42px;height:42px;border-radius:12px;background:linear-gradient(150deg,#6D5DF4,#0EA5C4);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
+.drawer-head h3{font-size:1.05rem;font-weight:700}
+.drawer-head p{font-size:.78rem;color:var(--t3)}
+.drawer-head .x{margin-left:auto;width:34px;height:34px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--t3)}
+.f-group{margin-bottom:.85rem}
+.f-group label{display:block;font-size:.78rem;font-weight:600;color:var(--t2);margin-bottom:.35rem}
+.f-group label .req{color:#F0407A}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.f-input,.f-select{
+  width:100%;height:44px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface2);
+  padding:0 .8rem;font-size:16px;color:var(--t1);transition:all .2s var(--ease);
+}
+.f-input:focus,.f-select:focus{border-color:var(--f-3);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb, var(--f-3) 14%, transparent)}
+.drawer-foot{display:flex;gap:.6rem;margin-top:1.2rem}
+.btn{height:46px;border-radius:var(--r-sm);font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all .2s var(--ease);flex:1}
+.btn-primary{background:linear-gradient(135deg,#6D5DF4,#0EA5C4);color:#fff;box-shadow:0 8px 18px -6px rgba(109,93,244,.5)}
+.btn-primary:active{transform:scale(.97)}
+.btn-ghost{background:var(--surface2);color:var(--t2);flex:0 0 auto;padding:0 1.1rem}
+
+/* ══════════ EXPORT MENU ══════════ */
+.exp-wrap{position:relative}
+.exp-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-md);box-shadow:var(--s3);min-width:210px;padding:.4rem;z-index:210;
+  opacity:0;transform:translateY(-6px) scale(.97);pointer-events:none;transition:all .18s var(--ease)}
+.exp-menu.open{opacity:1;transform:none;pointer-events:auto}
+.exp-item{width:100%;display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border-radius:10px;font-size:.85rem;font-weight:600;color:var(--t2);text-align:left}
+.exp-item:hover{background:var(--surface2);color:var(--t1)}
+.exp-item i{width:16px;color:var(--t4)}
+
+/* ══════════ TOAST ══════════ */
+#toast{
+  position:fixed;left:50%;bottom:calc(5.7rem + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+  background:var(--t1);color:var(--bg);padding:.7rem 1.1rem;border-radius:99px;font-size:.82rem;font-weight:600;
+  display:flex;align-items:center;gap:.5rem;z-index:300;opacity:0;pointer-events:none;transition:all .3s var(--sp);
+  box-shadow:0 12px 24px -6px rgba(0,0,0,.3);max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+#toast.error{background:#EF4444;color:#fff}
+#toast.info{background:#0EA5C4;color:#fff}
+
+/* ══════════ SKELETON (loading state) ══════════ */
+.skel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);height:118px;position:relative;overflow:hidden}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb, var(--t3) 20%, transparent),transparent);
+  animation:shimmer 1.4s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+@media(min-width:720px){
+  .top-actions .lbl-txt{display:inline}
+}
+.hide{display:none!important}
+
+/* ══════════ MOBILE COMPACT LAYOUT (Android / iOS) ══════════
+   บนจอมือถือ พื้นที่จำกัดกว่าเดสก์ท็อปมาก การ์ด/แผงลิฟต์ขนาดเท่าเดสก์ท็อป
+   จะกินพื้นที่ scroll โดยไม่จำเป็น จึงลด padding/ขนาดตัวอักษร/ความสูงปุ่ม
+   ลงเฉพาะช่วงนี้ ให้เห็นร้านค้าได้มากขึ้นต่อการเลื่อน 1 ครั้ง โดยยังคง
+   touch target ไม่ต่ำกว่ามาตรฐาน (~40px ขึ้นไป) */
+@media(max-width:480px){
+  .topbar{padding:.65rem .85rem;gap:.5rem}
+  .brand-mark{width:38px;height:38px;border-radius:11px;font-size:1rem}
+  .brand-txt b{font-size:1rem}
+  .brand-txt span{font-size:.62rem}
+  .btn-add-header{height:38px;padding:0 .8rem;font-size:.8rem}
+  .ic-btn{width:38px;height:38px}
+  .top-search input{height:40px}
+  /* ย้ายช่องค้นหาลงมาเป็นแถวเต็มความกว้างของตัวเอง แทนที่จะแย่งพื้นที่กับโลโก้/ปุ่ม
+     บนแถวเดียวกันจนถูกบีบแคบจนอ่านคำ placeholder ไม่ครบ (ตามที่ผู้ใช้ชี้ในภาพ) */
+  .brand{order:1}
+  .top-actions{order:2;margin-left:auto}
+  .top-search{order:3;flex:1 1 100%;max-width:none;margin-top:.15rem}
+
+  .elev-wrap{padding:.65rem .85rem 0}
+  .elev-panel{padding:.65rem}
+  .elev-label{font-size:.64rem;margin-bottom:.5rem}
+  .elev-btn{min-width:72px;height:76px;border-radius:14px;gap:.15rem}
+  .elev-btn .fl{font-size:1.5rem}
+  .elev-btn .ct{font-size:.66rem}
+  .elev-btn.all-btn{min-width:150px;height:76px;padding:0 .85rem}
+  .elev-btn.all-btn .fl{font-size:1.7rem}
+  .elev-btn.all-btn .ct{font-size:.68rem}
+  .elev-btn.all-btn .ct b{font-size:1.15rem}
+
+  .grid-head{padding:.3rem .85rem .4rem}
+  .grid-head h2{font-size:.9rem}
+  .vs-btn{width:26px;height:24px;font-size:.7rem}
+  .sbk-table{min-width:580px}
+  .grid{padding:0 .85rem .85rem;gap:.55rem}
+  .shop-card{padding:.7rem .8rem}
+  .sc-name{font-size:.92rem}
+  .sc-en,.sc-meta a,.sc-meta .zn{font-size:.74rem}
+  .sc-room{font-size:.68rem}
+  .sc-actions button{width:30px;height:30px}
+
+  .fab{width:52px;height:52px;font-size:1.15rem;right:1rem;bottom:calc(1rem + env(safe-area-inset-bottom))}
+  body{padding-bottom:calc(5.5rem + env(safe-area-inset-bottom))}
+}
+
+
+/* ══════════ SPLASH / INTRO ══════════
+   หน้าเปิดตัวสั้นๆ ก่อนเข้าแดชบอร์ด ใช้โทนเดียวกับพื้นหลังไล่สีของทั้งแอป
+   (ฟ้า-เขียว-ส้ม-แดง) เพื่อให้แบรนด์ต่อเนื่องกันตั้งแต่วินาทีแรกที่เปิด */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;
+  background:linear-gradient(150deg,#0EA5E9 0%,#22C55E 35%,#F59E0B 68%,#EF4444 100%);
+  transition:opacity .5s var(--ease),visibility .5s;
+}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.sp-mark{
+  width:96px;height:96px;border-radius:26px;position:relative;overflow:hidden;
+  background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.35);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:2.6rem;
+  animation:spPop .7s var(--sp) both, spGlow 2.2s ease .7s infinite;
+}
+@keyframes spPop{0%{transform:scale(0) rotate(-15deg);opacity:0}60%{transform:scale(1.08) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes spGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}50%{box-shadow:0 0 0 18px rgba(255,255,255,0)}}
+.sp-title{margin-top:1.4rem;font-size:1.9rem;font-weight:900;color:#fff;letter-spacing:-.03em;
+  animation:spSlide .6s var(--sp) .25s both;text-shadow:0 4px 16px rgba(0,0,0,.15)}
+.sp-title em{font-style:normal;opacity:.92}
+.sp-sub{font-size:.85rem;color:rgba(255,255,255,.85);font-weight:600;margin-top:.3rem;animation:spSlide .6s ease .4s both}
+@keyframes spSlide{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sp-bar{width:150px;height:4px;border-radius:99px;background:rgba(255,255,255,.25);margin-top:1.8rem;overflow:hidden;animation:spSlide .5s ease .5s both}
+.sp-fill{height:100%;border-radius:99px;background:#fff;width:0%;animation:spFill 1.7s var(--ease) .55s forwards}
+@keyframes spFill{to{width:100%}}
+@media(prefers-reduced-motion:reduce){#splash{display:none}}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════ SPLASH / INTRO — แสดง ~2 วินาทีก่อนเข้าแดชบอร์ด ══════════ -->
+<div id="splash" aria-hidden="true">
+  <div class="sp-mark"><i class="fas fa-building-columns"></i></div>
+  <div class="sp-title">SBK <em>Directory</em></div>
+  <div class="sp-sub">ทำเนียบร้านค้า Seacon Bangkae</div>
+  <div class="sp-bar"><div class="sp-fill"></div></div>
+</div>
+
+<!-- ══════════ TOPBAR ══════════ -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><i class="fas fa-building-columns"></i></div>
+    <div class="brand-txt"><b>SBK <span style="color:var(--f-3)">Directory</span></b><span id="totalCountLbl">— รายชื่อร้านค้า</span></div>
+  </div>
+  <div class="top-search">
+    <i class="fas fa-magnifying-glass ico"></i>
+    <input id="searchInput" type="text" placeholder="ค้นหาร้านค้า, เลขห้อง, เบอร์โทร..." autocomplete="off">
+    <button class="clear" id="clearBtn" onclick="clearSearch()"><i class="fas fa-circle-xmark"></i></button>
+  </div>
+  <div class="top-actions">
+    <button class="btn-add-header" onclick="openDrawer(-1)"><i class="fas fa-plus"></i><span class="txt">เพิ่มร้าน</span></button>
+    <button class="ic-btn theme" id="themeBtn" onclick="toggleDark()" aria-label="สลับธีมมืด/สว่าง"><i class="fas fa-moon" id="themeIcon"></i></button>
+    <div class="exp-wrap">
+      <button class="ic-btn" onclick="toggleExpMenu(event)" aria-label="นำเข้า/ส่งออกข้อมูล"><i class="fas fa-arrow-up-from-bracket"></i></button>
+      <div class="exp-menu" id="expMenu">
+        <button class="exp-item" onclick="exportExcel()"><i class="fas fa-file-excel"></i> ส่งออก Excel</button>
+        <button class="exp-item" onclick="exportJSON()"><i class="fas fa-file-code"></i> ส่งออก JSON</button>
+        <button class="exp-item" onclick="triggerImport()"><i class="fas fa-file-import"></i> นำเข้า JSON</button>
+        <button class="exp-item" onclick="resetToDefault()"><i class="fas fa-rotate-left"></i> รีเซ็ตข้อมูลต้นฉบับ</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept=".json" class="hide" onchange="importJSON(event)">
+  </div>
+</div>
+
+<!-- ══════════ ELEVATOR PANEL (signature) ══════════ -->
+<div class="elev-wrap">
+  <div class="elev-panel">
+    <div class="elev-label"><i class="fas fa-layer-group"></i> เลือกชั้น — เหมือนปุ่มกดลิฟต์จริง</div>
+    <div class="elev-row" id="elevRow"></div>
+  </div>
+</div>
+
+<!-- ══════════ GRID ══════════ -->
+<div class="grid-head">
+  <h2 id="resultLabel">ร้านค้าทั้งหมด</h2>
+  <div class="gh-right">
+    <span id="resultCount">0 รายการ</span>
+    <div class="view-switch" role="group" aria-label="สลับมุมมองรายการ">
+      <button class="vs-btn on" id="viewGridBtn" onclick="setView('grid')" aria-label="มุมมองการ์ด" title="มุมมองการ์ด"><i class="fas fa-table-cells-large"></i></button>
+      <button class="vs-btn" id="viewTableBtn" onclick="setView('table')" aria-label="มุมมองตาราง" title="มุมมองตาราง"><i class="fas fa-table-list"></i></button>
+    </div>
+  </div>
+</div>
+<div class="grid" id="listContainer">
+  <div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>
+</div>
+
+<!-- ══════════ FAB ══════════ -->
+<button class="fab" id="fab" onclick="openDrawer(-1)" aria-label="เพิ่มร้านค้าใหม่"><i class="fas fa-plus"></i></button>
+
+<!-- ══════════ DRAWER: ADD / EDIT ══════════ -->
+<div class="drawer-bg" id="drawerBg" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true">
+  <div class="drawer-handle"></div>
+  <div class="drawer-head">
+    <div class="di" id="drawerIcon"><i class="fas fa-store"></i></div>
+    <div><h3 id="drawerTitle">เพิ่มร้านค้าใหม่</h3><p id="drawerSub">กรอกข้อมูลร้านค้าให้ครบถ้วน</p></div>
+    <button class="x" onclick="closeDrawer()"><i class="fas fa-xmark"></i></button>
+  </div>
+  <input type="hidden" id="editIndex" value="-1">
+  <div class="f-row">
+    <div class="f-group"><label>เลขห้อง <span class="req">*</span></label><input class="f-input mono" id="f-room" placeholder="เช่น 402A"></div>
+    <div class="f-group"><label>ชั้น <span class="req">*</span></label>
+      <select class="f-select" id="f-floor">
+        <option value="B">ชั้น B</option><option value="1">ชั้น 1</option><option value="2">ชั้น 2</option>
+        <option value="3">ชั้น 3</option><option value="4">ชั้น 4</option><option value="5">ชั้น 5</option><option value="6">ชั้น 6</option>
+      </select>
+    </div>
+  </div>
+  <div class="f-group"><label>ชื่อร้าน (ไทย) <span class="req">*</span></label><input class="f-input" id="f-nameTh" placeholder="เช่น สุกี้นางพญา"></div>
+  <div class="f-group"><label>ชื่อร้าน (อังกฤษ)</label><input class="f-input" id="f-nameEn" placeholder="เช่น Suki Nangphaya"></div>
+  <div class="f-group"><label>เบอร์ติดต่อ</label><input class="f-input" id="f-tel" placeholder="เช่น 02-458-2509" type="tel"></div>
+  <div class="f-group"><label>บริเวณ / โซน</label><input class="f-input" id="f-zone" placeholder="เช่น บริเวณลานกลาง"></div>
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" onclick="closeDrawer()">ยกเลิก</button>
+    <button class="btn btn-primary" id="saveBtn" onclick="saveShop()"><i class="fas fa-check"></i> บันทึกข้อมูล</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DEFAULT_SHOPS = [{"room":"B001","nameTh":"ท็อปซุปเปอร์มาร์เก็ต","nameEn":"Tops Supermarket","tel":"02-458-2562","floor":"B","zone":"ติด กับ Tops ฝั่งโซน ผลไม้"},{"room":"B01","nameTh":"ร้านกระถางเงิน","nameEn":"","tel":"095-814-6968","floor":"B","zone":"บริเวณลานกลม"},{"room":"B01","nameTh":"ร้านเครื่องหอม","nameEn":"","tel":"092-647-9946","floor":"B","zone":"บริเวณลานกลม"},{"room":"B03B","nameTh":"โรงเกลือ","nameEn":"Salt factory","tel":"02-4548668","floor":"B","zone":"บริเวณลานกลม"},{"room":"B04","nameTh":"สนุก คาราโอเกะ","nameEn":"Sanook Karaoke","tel":"099-425-5478","floor":"B","zone":"บริเวณลานกลม"},{"room":"B05","nameTh":"เอ็มเค บุฟเฟต์","nameEn":"MK Buffet","tel":"083-099-6389","floor":"B","zone":"บริเวณลานกลม"},{"room":"B06","nameTh":"กูร์ กูร์ ชิคเก้นท์","nameEn":"Gugu chicken","tel":"063-323-7548","floor":"B","zone":"บริเวณลานกลม"},{"room":"B07","nameTh":"เทพเจ้าเพอร์ซีอุส ตำนานก๋วยเตี๋ยวเรือฯ","nameEn":"","tel":"093-246-4425","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B08","nameTh":"ชินคันเซ็น ซูชิ","nameEn":"Shinkanzen Sushi","tel":"083 607-7289","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B09","nameTh":"ก๋วยเตี๋ยวเรือพระนคร","nameEn":"ก๋วยเตี๋ยวเรือพระนคร","tel":"02-003-9545","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B10","nameTh":"ฟูจิ เจแปนนิส เรสเทอรอง","nameEn":"Fuji Restaurant","tel":"080-362-6842","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B11","nameTh":"วัตสัน","nameEn":"Watsons","tel":"092-2463485","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B12","nameTh":"เลมอนฟาร์ม","nameEn":"Lemon Farm","tel":"02-458-2689","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B13","nameTh":"ซูรูฮะ","nameEn":"Tsuruha","tel":"02-458-2672","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B14A","nameTh":"ซูรูฮะ","nameEn":"Tsuruha","tel":"02-458-2672","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B14B","nameTh":"ร้านทองออโรร่า","nameEn":"Aurora","tel":"097-092-1548","floor":"B","zone":"โซน Food Marché"},{"room":"B15A","floor":"B","nameTh":"ห้างทอง เซ่งเฮงเยาวราช","nameEn":"Seng Heng","tel":"065-837-4823","zone":"โซน Food Marché"},{"room":"B15B","nameTh":"ร้านทองหวังโต๊ะกังเยาวราช","nameEn":"ร้านทองหวังโต๊ะกังเยาวราช","tel":"062-448-7864","floor":"B","zone":"โซน Food Marché"},{"room":"B16","floor":"B","nameTh":"ห้างทองกรุงเทพเยาวราช","nameEn":"Yaowarat Gold Shop","tel":"092 243-0002","zone":"โซน Food Marché"},{"room":"B17","nameTh":"คาปิบาร่า คาเฟ่","nameEn":"Capybara Cafe","tel":"","floor":"B","zone":"โซน Food Marché"},{"room":"B19","nameTh":"โมเดิร์น แอร์","nameEn":"Modern Air","tel":"02-458-2697","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B20","nameTh":"ยามาซากิ","nameEn":"Yamazaki","tel":"080-062-2849","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B21","nameTh":"ลิตเติ้ล อายส์ คาเฟ่","nameEn":"Little Eyes Café","tel":"086-544-5615","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B22","nameTh":"ร้านนายอินทร์","nameEn":"Naiin","tel":"02-458-2488","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B23","nameTh":"เอลลี่เนลล์","nameEn":"Elle Nails","tel":"096-295-3924","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B24","nameTh":"ภูมิใจไทย","nameEn":"ภูมิใจไทย","tel":"099-081-0011","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B25","nameTh":"มิวซิคแพลนท์","nameEn":"Music Plant","tel":"088-008-8018","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B26","nameTh":"เดอะซิลเวอร์","nameEn":"The Silver","tel":"082-588-8433","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"B27","nameTh":"โมชิ โมชิ","nameEn":"MoshiMoshi","tel":"088-971-3625","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B28","nameTh":"บีทูเอส","nameEn":"B2S","tel":"063-323-1064","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B29","nameTh":"บีทูเอส","nameEn":"B2S","tel":"063-323-1064","floor":"B","zone":"บริเวณลานกลาง"},{"room":"B30A","nameTh":"อิตาลาเซีย","nameEn":"Italasia","tel":"081-483-1112","floor":"B","zone":"ตรงข้ามTops"},{"room":"B30B-B31A","nameTh":"ล็อกแอนล็อก","nameEn":"LocknLock","tel":"","floor":"B","zone":"ตรงข้ามTops"},{"room":"B31B","nameTh":"พี แอนด์ เอฟ สมูธไลฟ์","nameEn":"P&F Smooth Life","tel":"081-234-9313","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"B32A","nameTh":"ฮารุฟิล์ม","nameEn":"HARU FILM","tel":"","floor":"B","zone":"บริเวณลานกลม"},{"room":"B32B","nameTh":"ดันลอปพิลโล","nameEn":"Dunloppillo","tel":"085-366-9602","floor":"B","zone":"บริเวณลานกลม"},{"room":"B33","nameTh":"ดันลอปพิลโล","nameEn":"Dunloppillo","tel":"085-366-9602","floor":"B","zone":"บริเวณลานกลม"},{"room":"B36","nameTh":"ออฟฟิศ เมท","nameEn":"Office Mate","tel":"02-458-2921-5","floor":"B","zone":"โซน Food Marché"},{"room":"B37","nameTh":"ไดโซะ","nameEn":"Daiso","tel":"066-058-7742","floor":"B","zone":"โซน Food Marché"},{"room":"B38-39","nameTh":"ด็อกเตอร์ฟาร์มา","nameEn":"Doctor Pharma","tel":"097-141-3555","floor":"B","zone":"โซน Food Marché"},{"room":"B40-B41","nameTh":"เพาเวอร์บาย","nameEn":"Powerbuy","tel":"02-458-2570","floor":"B","zone":"บริเวณ ตรงข้าม กับTops"},{"room":"B42","nameTh":"เพ็ทคลับ","nameEn":"Petclub","tel":"098-250-0258","floor":"B","zone":"ติด กับTops"},{"room":"B43","nameTh":"สเปซ แอนด์ ไทม์คิ้วบ์","nameEn":"Space & Time cube","tel":"065-724-1359","floor":"B","zone":"ติด กับTops ฝั่งโซน ผลไม้"},{"room":"FBB/001","nameTh":"ไข่หวานบ้านซูชิ","nameEn":"Kaiwaan BaanSushi","tel":"091 003-5255","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"FBB/003","nameTh":"หยกสด","nameEn":"Yok Sod","tel":"065-724-4990","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"FBB/004","nameTh":"ชาคิง","nameEn":"Cha King","tel":"089-679-4050","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"FBB/006","nameTh":"วราภรณ์","nameEn":"Waraporn","tel":"02-458-2515","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"FBB/007","nameTh":"เคียวได ซูชิ","nameEn":"KyoDai Sushi","tel":"","floor":"B","zone":"บริเวณตรงข้ามTops"},{"room":"FBB/010","nameTh":"กาก้า","nameEn":"Gateaux House","tel":"062-197-7946","floor":"B","zone":"บริเวณตรงข้าม Powerbuy"},{"room":"FBB/011","nameTh":"ไฮโซโรตีชาชัก","nameEn":"Hiso Rotee","tel":"081-667-9950","floor":"B","zone":"บริเวณตรงข้าม Powerbuy"},{"room":"FBB/012","nameTh":"ไวท์ สตอรี่","nameEn":"White Story","tel":"093-531-4535","floor":"B","zone":"บริเวณตรงข้าม Powerbuy"},{"room":"FBB/013","nameTh":"แดรี่ควีน","nameEn":"Dairy Queen","tel":"086-382-1784","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/015","nameTh":"ดังกิ้น โดนัท","nameEn":"Dunkin Donut","tel":"065-940-7725","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/016","nameTh":"ดาหลา เต้าฮวย เฉาก๊วย","nameEn":"Darah","tel":"062-162-4169","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/017A","nameTh":"อินเลิฟสลัด","nameEn":"In love Salad","tel":"091-003-5255","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/017B","nameTh":"คามุ","nameEn":"KAMU","tel":"081-546-2605","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/018A","nameTh":"เอ็มเอ็กซ์เค้กแอนด์เบเกอร์รี่","nameEn":"MX cake&bakery","tel":"092-409-9271","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/018B","nameTh":"โอลิโอ พาสต้า แอนด์ เบเกอรี่","nameEn":"Olio Pasta & Bakery","tel":"065-569-4569","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/025","nameTh":"โยโตริ","nameEn":"Yotori","tel":"081-953-5925","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/026","nameTh":"รุนขนมไข่","nameEn":"Roon Khanom Khai","tel":"","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/027","nameTh":"บองชู","nameEn":"Bonjour","tel":"095-542-6139","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/028","nameTh":"เช็งซิมอี๊","nameEn":"Cheng Sim E","tel":"","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/029","nameTh":"โคจิ เบอเกอรี่ เฮ้าร์","nameEn":"Koji Bakery House","tel":"","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/030","nameTh":"ปังสยาม","nameEn":"Pung siam","tel":"095-224-4247","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/031","nameTh":"มังกรบิน","nameEn":"Mungkornbin","tel":"064-216-8185","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/032","nameTh":"เอสแอนด์พี","nameEn":"S&P","tel":"085-661-4506","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/033","nameTh":"โปเตโต้ คอร์เนอร์","nameEn":"Potato Corner","tel":"063-078-8662","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/034A","nameTh":"บาร์ร่อน บาร์ โยเกิร์ต","nameEn":"Baron's Bar","tel":"","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/034B","nameTh":"มิสเตอร์บัน","nameEn":"Mr. Bun","tel":"081-179-5614","floor":"B","zone":"บริเวณหน้า Powerbuy"},{"room":"FBB/035A","nameTh":"เคียวไดราเมน","nameEn":"KYODAI RAMEN","tel":"098-957-8236","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/035B","nameTh":"โยโกรูโตะ","nameEn":"Yoguruto","tel":"095-575-9549","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/036","nameTh":"ปังแมน","nameEn":"Pang Man","tel":"088-008-0981","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/037A","nameTh":"เจปัง","nameEn":"J Pang","tel":"083-773-8298","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/037B","nameTh":"เอ็นแอนท์บี แพนเค้ก","nameEn":"N&B Pancake","tel":"095-398-0089","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/038","nameTh":"เกรนนี่","nameEn":"Grainey","tel":"094-303-5945","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/039","nameTh":"โบว์เค้ก","nameEn":"Bowcake","tel":"063-262-6313","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/040","nameTh":"ไฮ ที เอเวอร์ดี้เดย์","nameEn":"Hi Tea Everyday","tel":"","floor":"B","zone":"บริเวณลานกลาง"},{"room":"FBB/041","nameTh":"ยูเมย่า","nameEn":"Yumeya","tel":"093-192-8980","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/042","nameTh":"คลิ๊กแคล็ก","nameEn":"Clickclack","tel":"094 626-4252","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/043","nameTh":"โดมิคอน (บ้านข้าวโพด)","nameEn":"Domi Corn","tel":"095-487-8634","floor":"B","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FBB/045","nameTh":"เบสเบค เค้กไข่ไต้หวัน","nameEn":"Best Bake","tel":"098-472-6374","floor":"B","zone":"บริเวณลาน หน้าฟูดคอร์ท"},{"room":"FBB/046","nameTh":"ฟูกุ มัทฉะ","nameEn":"Fuku Matcha","tel":"063-187-1672","floor":"B","zone":"บริเวณลานกลาง"},{"room":"MKB/004","floor":"B","nameTh":"Clean Mate","nameEn":"Clean Mate","tel":"065-951-9478","zone":"ทางออกประตู A8"},{"room":"MKC/001","nameTh":"ล้างรถชาเลนเจอร์","nameEn":"Challenger","tel":"02-041-9388","floor":"B","zone":"บริเวณลานกลาง"},{"room":"เช่าพื้นที่ ของอาบาคัส","nameTh":"ซาโต ด้ง","nameEn":"SATO DONG","tel":"081-999-5912","floor":"B","zone":"โซน Food Marché"},{"room":"เช่าพื้นที่ ของอาบาคัส","nameTh":"เชียงการีล่า","nameEn":"Shangarila","tel":"062-253-9698","floor":"B","zone":"โซน Food Marché"},{"room":"เช่าพื้นที่ ของอาบาคัส","nameTh":"วัชมน","nameEn":"Wachamon","tel":"063-406-2549","floor":"B","zone":"โซน Food Marché"},{"room":"เช่าพื้นที่ ของอาบาคัส","nameTh":"เชสเตอร์กริลล์","nameEn":"Chester Grill","tel":"081-8606050","floor":"B","zone":"โซน Food Marché"},{"room":"101","nameTh":"เมียง รยุน จินซา คาลบี","nameEn":"Myeongryun Jinsa Galbi","tel":"02-458-2884","floor":"1","zone":"บริเวณลานกลม"},{"room":"102","nameTh":"สเวนเซ่นส์","nameEn":"Swensen's","tel":"063-203-3193","floor":"1","zone":"บริเวณลานกลม"},{"room":"103","nameTh":"เดอะ พิซซ่า คอมปะนี","nameEn":"The Pizza company","tel":"092-281-0739","floor":"1","zone":"บริเวณลานกลม"},{"room":"104","nameTh":"เคเอฟซี","nameEn":"KFC","tel":"02-030-1772","floor":"1","zone":"บริเวณลานกลม"},{"room":"105","nameTh":"เชสเตอร์ กริลล์","nameEn":"Chester's Grill","tel":"02-458-2710","floor":"1","zone":"บริเวณลานกลม"},{"room":"106","nameTh":"NaiSnow","nameEn":"NaiSnow","tel":"082-160-7948","floor":"1","zone":"บริเวณลานกลม"},{"room":"107A","nameTh":"บอนชอน","nameEn":"Bonchon","tel":"065-120-9113","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"107B","nameTh":"ชาตรามือ","nameEn":"ChaTraMue","tel":"081-711-4707","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"108","nameTh":"ยากินิกุไลค์","nameEn":"YakinikuLike","tel":"061-976-2833","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"109-110","nameTh":"แม็คโดนัลด์","nameEn":"McDonald's","tel":"085-488-0510","floor":"1","zone":"บริเวณลานกลาง หน้า เคาแตอร์ CS"},{"room":"111A","nameTh":"สตาบัค","nameEn":"Starbucks","tel":"084-874-1732","floor":"1","zone":"บริเวณลานกลาง หน้า เคาแตอร์ CS"},{"room":"111B","nameTh":"สตาบัค","nameEn":"Starbucks","tel":"084-874-1732","floor":"1","zone":"บริเวณลานกลาง หน้า เคาแตอร์ CS"},{"room":"112-113","nameTh":"มูจิ","nameEn":"Muji","tel":"02-458-2473","floor":"1","zone":"บริเวณลานกลาง"},{"room":"114-117","nameTh":"ยูนิโคล่","nameEn":"Uniqlo","tel":"02-029-1490","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"118-122","nameTh":"ดองกิ","nameEn":"Don Don Donki","tel":"02-487-2699","floor":"1","zone":"บริเวณลาน ซีซั่น"},{"room":"123-124","nameTh":"2nd Street","nameEn":"2nd Street","tel":"02-761-6500","floor":"1","zone":"บริเวณลาน ซีซั่น"},{"room":"125-127C","nameTh":"ซุปเปอร์สปอร์ต","nameEn":"Supersport","tel":"02-458-2566","floor":"1","zone":"บริเวณลาน ซีซั่น Hall B"},{"room":"128","nameTh":"สเกตเชอร์","nameEn":"SKECHER","tel":"081-248-1377","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"129","nameTh":"ฟุตเกียร์","nameEn":"Footgear","tel":"02-1174631-2","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"130","nameTh":"โอเรียนทอล พริ้นซ์เซส","nameEn":"ORIENTAL","tel":"090-880-5142","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"131","nameTh":"Lalil","nameEn":"Lalil","tel":"02-700-5711","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"131","nameTh":"คิ้วเพรส","nameEn":"CUTE PRESS","tel":"084-874-7286","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"132","nameTh":"ลีวายส์","nameEn":"Levi's","tel":"094-367-3334","floor":"1","zone":"บริเวณลานกลาง"},{"room":"133","nameTh":"อเมซอน","nameEn":"Amazon","tel":"080-059-7590","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"134A","nameTh":"จีคิว","nameEn":"GQ","tel":"086-340-8644","floor":"1","zone":"บริเวณลานกลาง"},{"room":"134B","nameTh":"เปรม","nameEn":"Prem","tel":"","floor":"1","zone":"บริเวณลานกลาง"},{"room":"135","nameTh":"บิวเทรียม","nameEn":"Beautrium","tel":"080-935-8917","floor":"1","zone":"บริเวณลานกลาง โซนแฟชั่น"},{"room":"136A","nameTh":"คามิกา","nameEn":"Kamika","tel":"063-442-0053","floor":"1","zone":"บริเวณลาน โซนแฟชั่น"},{"room":"136B","nameTh":"วาโก้","nameEn":"Wacoal","tel":"081-364-9382","floor":"1","zone":"บริเวณลาน โซนแฟชั่น"},{"room":"137","nameTh":"นิโตริ","nameEn":"Nitori","tel":"02-458-2778","floor":"1","zone":"บริเวณลาน โซนแฟชั่น"},{"room":"138","nameTh":"โอนเดย์","nameEn":"OWNDAYS","tel":"02-047-3937","floor":"1","zone":"บริเวณลาน โซนแฟชั่น"},{"room":"139-140","nameTh":"สปอร์ตเวิลด์","nameEn":"Sport World","tel":"081-481-2919","floor":"1","zone":"บริเวณลาน โซนแฟชั่น"},{"room":"F02-03","nameTh":"โอ้กะจู๋","nameEn":"Oh ka Ju","tel":"092-131-7219","floor":"1","zone":"บริเวณหน้าศูนย์"},{"room":"F04-06","nameTh":"สุกี้ตี๋น้อย","nameEn":"Suki Teenoi","tel":"081-715-8293","floor":"1","zone":"บริเวณหน้าศูนย์"},{"room":"FB1/001","nameTh":"โลวี่ คออฟฟี่","nameEn":"Rowie's Coffee","tel":"099-462-5154","floor":"1","zone":"บริเวณลานกลาง หน้า Mc"},{"room":"FB1/011","nameTh":"วันทูทู คอฟฟี่","nameEn":"One to two Coffee","tel":"095-345-7165","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FB1/012","nameTh":"กาก้า","nameEn":"Gaga","tel":"096-394-5380","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FB1/013","nameTh":"โคอิเตะ","nameEn":"Ko i Te","tel":"065-512-0134","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FB1/014","nameTh":"อะมอร์","nameEn":"AMOR","tel":"097-201-0083","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"FB1/015","nameTh":"มิสเตอร์โจลี่","nameEn":"Mr.Jolly","tel":"065-909-5515","floor":"1","zone":"บริเวณลาน ซีซั่น"},{"room":"FB1/016","nameTh":"ไอติม มอลโต","nameEn":"MOLTO","tel":"063-202-5154","floor":"1","zone":"บริเวณลานกลาง"},{"room":"FB1/017","nameTh":"ปารีส มิกกี้","nameEn":"Paris Mikki","tel":"","floor":"1","zone":"บริเวณลานกลาง ข้างบันไดเลื่อน"},{"room":"FB1/018","nameTh":"โอ้จู๊ดส์","nameEn":"Oh Juice","tel":"093-138-2739","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/019","nameTh":"จูนนี่ แคนดี้","nameEn":"Juney candy","tel":"02-458-2702","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/020-FB1/021","nameTh":"กวางทอง","nameEn":"Kwang thong Café","tel":"098-960-1697","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/022-FB1/023","nameTh":"นกฮูกเฮ้าส์คาเฟ่","nameEn":"Nokhook House café","tel":"097-424-2363","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/024","nameTh":"เจี้ยนชา","nameEn":"Jian Cha","tel":"098-249-4321","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/025","nameTh":"โจรสลัด","nameEn":"Jones Salad","tel":"061-776-2560","floor":"1","zone":"บริเวณลานกลาง Hall B"},{"room":"FB1/026-027","nameTh":"โอลิโนะ","nameEn":"Olino Crepe & tea","tel":"080-603-3569","floor":"1","zone":"บริเวณลานกลม โซนแฟชั่น"},{"room":"FB1/028","nameTh":"อาม่าโส่วจั้ว","nameEn":"Ah Ma Shou Zuo","tel":"","floor":"1","zone":"บริเวณลานกลม โซนแฟชั่น"},{"room":"FB1/029","nameTh":"ชากี","nameEn":"CHAGEE","tel":"","floor":"1","zone":"บริเวณลานกลม โซนแฟชั่น"},{"room":"MK1/002","nameTh":"อเนลโล่","nameEn":"Anello","tel":"063-271-7535","floor":"1","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"MK1/003","nameTh":"ป๊อบมาร์ท","nameEn":"POP MART","tel":"","floor":"1","zone":"บริเวณลานกลาง"},{"room":"MK1/005-007","nameTh":"นิยม ยีนส์","nameEn":"Niyom Jeans","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/006","nameTh":"ยึดป่าว","nameEn":"Yuedpao","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/008","nameTh":"สยามพาสเทล","nameEn":"Siam Pastel","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/009","nameTh":"น้ำชา","nameEn":"Numsha","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/010","nameTh":"SHU","nameEn":"SHU","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/011","nameTh":"LYSZ","nameEn":"LYSZ","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/012","nameTh":"เออร์เธ","nameEn":"URTHE","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/013","nameTh":"ชับเบอร์ส เลดี้","nameEn":"Chubbers Lady","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/014","nameTh":"สเตลร่า","nameEn":"Stellar","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/015","nameTh":"วิท อีส","nameEn":"With.it","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/016","nameTh":"LME","nameEn":"LME","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/017","nameTh":"เนเจอร์","nameEn":"NATURE","tel":"","floor":"1","zone":"บริเวณ โซนแฟชั่น"},{"room":"MK1/018","nameTh":"ESP","nameEn":"ESP","tel":"","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"MK1/019","nameTh":"High school","nameEn":"High school","tel":"","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"MK1/020","nameTh":"PLAYGROUND","nameEn":"PLAYGROUND","tel":"","floor":"1","zone":"บริเวณลานกลาง Hall A"},{"room":"ตู้เต่าบิน","nameTh":"ตู้เต่าบิน","nameEn":"TAO BIN","tel":"","floor":"1","zone":"บริเวณลานกลาง ข้างลิฟต์"},{"room":"หน้าศูนย์ฯ","nameTh":"เฮลท์เทค","nameEn":"Health Tech","tel":"061-172-9658","floor":"1","zone":"หน้าศูนย์ฯ ทางเข้าพระพรหม"},{"room":"200","nameTh":"โฮมโปร","nameEn":"Homepro","tel":"02-455-0070","floor":"2","zone":"บริเวณลานกลางกลาง"},{"room":"201-203","nameTh":"ทีจี โฟน","nameEn":"TG FONE","tel":"02-237-5559","floor":"2","zone":"บริเวณลานกลม"},{"room":"206","nameTh":"ดีแทค","nameEn":"DTAC SHOP","tel":"Call Center 1678","floor":"2","zone":"บริเวณลานกลม"},{"room":"207","nameTh":"ซัมซุง ช็อปขาย","nameEn":"Samsung Shop","tel":"085-094-1111","floor":"2","zone":"บริเวณลานกลม"},{"room":"208-209","nameTh":"จีเอซี ไอออน","nameEn":"GAC Aion","tel":"087-594-6555","floor":"2","zone":"บริเวณลานกลม"},{"room":"210","nameTh":"หัวเหว่ยช็อปซื้อ","nameEn":"Huawei Shop","tel":"094-514-2554","floor":"2","zone":"บริเวณลานกลม"},{"room":"211","nameTh":"ซี เอส ซี","nameEn":"CSC Shop","tel":"02-116-9250","floor":"2","zone":"บริเวณลานกลม"},{"room":"212-213","nameTh":"สตูดิโอเซเว่น","nameEn":"Studio 7","tel":"090-88-08020","floor":"2","zone":"บริเวณลาน Hall B"},{"room":"214","nameTh":"ออปโป้","nameEn":"Oppo","tel":"063-826-7012","floor":"2","zone":"บริเวณลาน Hall B"},{"room":"215","nameTh":"รีแม็กซ์","nameEn":"Remax","tel":"086-779-1888","floor":"2","zone":"บริเวณลานกลาง"},{"room":"216","nameTh":"บู๊ทส์","nameEn":"Boots","tel":"02-458-2769","floor":"2","zone":"บริเวณลานกลาง"},{"room":"217-218","nameTh":"เจมาร์ท","nameEn":"JAY MART","tel":"02-078-6012","floor":"2","zone":"บริเวณลานกลาง"},{"room":"219","nameTh":"หอแว่น","nameEn":"Horwann","tel":"02-458-2919","floor":"2","zone":"บริเวณลานกลาง"},{"room":"220","nameTh":"โมเดิรน์ ออฟติคอล","nameEn":"Modern Optical","tel":"02-454-8745","floor":"2","zone":"บริเวณลานกลาง"},{"room":"221","nameTh":"มัตสึคิโยะ","nameEn":"Matsukiyo","tel":"097-223-4583","floor":"2","zone":"บริเวณลานกลาง ทางออก MRT"},{"room":"222-223A","nameTh":"อีท แอม อาร์","nameEn":"Eat Am Are","tel":"080-213-5525","floor":"2","zone":"บริเวณลานกลาง ทางออก MRT"},{"room":"227-228","nameTh":"วัตสัน","nameEn":"Watsons'","tel":"063-217-1642","floor":"2","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"229","nameTh":"ลาเบลล่า","nameEn":"La Bella Beauty Art","tel":"02-023-2057","floor":"2","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"230","nameTh":"ต่อขนตา","nameEn":"Lash perfect","tel":"02-023-2057","floor":"2","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"231-232","nameTh":"โอเค ออฟติคอล","nameEn":"OK Optical","tel":"02-458-2785","floor":"2","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"233","nameTh":"แบร์เฮ้าส์","nameEn":"Bear House","tel":"095-531-1274","floor":"2","zone":"บริเวณลานกลาง"},{"room":"234","nameTh":"บาจา","nameEn":"BATA","tel":"088-980-5614","floor":"2","zone":"บริเวณลานกลาง"},{"room":"240","nameTh":"บานาน่า โมบาย","nameEn":"Banana Mobile","tel":"088-625-4268","floor":"2","zone":"บริเวณลานกลาง"},{"room":"242","nameTh":"เทเลวิช","nameEn":"TELEWIZ","tel":"081-133-8118","floor":"2","zone":"บริเวณลานกลาง"},{"room":"245","nameTh":"บัดดี้ แลนด์","nameEn":"Buddy Land","tel":"","floor":"2","zone":"บริเวณหน้าโฮมโปร"},{"room":"246","nameTh":"เอ็มซี เอ็กซ์พอร์ท","nameEn":"M.C. Export","tel":"","floor":"2","zone":"บริเวณหน้าโฮมโปร"},{"room":"247A","nameTh":"เปปเปอร์ ลันช์","nameEn":"Pepper Lunch","tel":"080-043-1099","floor":"2","zone":"บริเวณ หน้าซีซั่น"},{"room":"247B","nameTh":"คัตสึยะ","nameEn":"Katsuya","tel":"065-964-8050","floor":"2","zone":"บริเวณ หน้าซีซั่น"},{"room":"248","nameTh":"อีฟ โรเช","nameEn":"Yves Roche","tel":"02-458-2783","floor":"2","zone":"บริเวณ หน้าซีซั่น"},{"room":"249","nameTh":"แม็คยีนส์","nameEn":"MC Jeans","tel":"02-458-2635","floor":"2","zone":"บริเวณ หน้าซีซั่น"},{"room":"250","nameTh":"เคเควี","nameEn":"KKV","tel":"02-458-2575","floor":"2","zone":"บริเวณ หน้าซีซั่น"},{"room":"FB2/004","nameTh":"อานตี้ แอนน์","nameEn":"AUNTIE ANNE'S","tel":"02-458-2658","floor":"2","zone":"บริเวณลานกลาง"},{"room":"FB2/005","nameTh":"มิสเตอร์ โดนัท","nameEn":"Mr.Donuts","tel":"089-893-9781","floor":"2","zone":"บริเวณลานกลาง"},{"room":"FB2/006","nameTh":"ฉันจะกินชาเย็นทุกวัน","nameEn":"ฉันจะกินชาเย็นทุกวัน","tel":"","floor":"2","zone":"บริเวณลานกลาง"},{"room":"FB2/007","nameTh":"มินิ โอเรียนทอล สปีดบาร์","nameEn":"Mini Oriental Speedbar","tel":"082-852-6922","floor":"2","zone":"บริเวณลานกลาง"},{"room":"FB2/008","nameTh":"อราโม่ อโรม่า","nameEn":"Aramo Aroma","tel":"081-945-9154","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/001","nameTh":"Gloud9","nameEn":"Gloud9","tel":"","floor":"2","zone":"บริเวณลานกลาง หน้าหน้าซีซั่น"},{"room":"MK2/002","nameTh":"AGLAM","nameEn":"AGLAM","tel":"","floor":"2","zone":"บริเวณหน้าซีซั่น"},{"room":"MK2/004","nameTh":"ด็อกเตอร์พงศ์","nameEn":"Dr.Pong","tel":"093-958-6312","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/005","nameTh":"SEECHA","nameEn":"SEECHA","tel":"","floor":"2","zone":"บริเวณหน้าซีซั่น"},{"room":"MK2/006","nameTh":"Bringhome.thebacon","nameEn":"Bringhome.thebacon","tel":"","floor":"2","zone":"บริเวณหน้าซีซั่น"},{"room":"MK2/006-1","nameTh":"บิวตี้แลป","nameEn":"Beautilab","tel":"083-006-3425","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/006-3","nameTh":"โมนา","nameEn":"Mona","tel":"062-591-6264","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/008","nameTh":"พาสเทล เมจิค","nameEn":"Pastel magic","tel":"082-412-2828","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/008","nameTh":"พาสเทล เมจิค","nameEn":"Pastel Magic","tel":"082-412-2828","floor":"2","zone":"บริเวณลานกลาง"},{"room":"MK2/010","nameTh":"ร้านติดฟิล์ม","nameEn":"Focus","tel":"094-217-1714","floor":"2","zone":"บริเวณลานกลาง"},{"room":"OP2/05","nameTh":"คาร์มาร์ท","nameEn":"Karmart","tel":"063-535-6584","floor":"2","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"OP2/06","nameTh":"โน๊สที","nameEn":"Nose Tea","tel":"099-689-5561","floor":"2","zone":"บริเวณลานกลาง หน้าหน้าซีซั่น"},{"room":"ซีซั่น","nameTh":"บ. รีโนวา มอลล์ จก.","nameEn":"Season Mall","tel":"02-458 2647","floor":"2","zone":"บริเวณพื้นที่ ซีซั่น"},{"room":"ซีซั่น","nameTh":"อ๋องชุดพยาบาล","nameEn":"อ๋องชุดพยาบาล","tel":"080-228-9399","floor":"2","zone":"บริเวณพื้นที่ ซีซั่น"},{"room":"ซีซั่น","nameTh":"ร้านขายเครื่องหอมชัญญ่า","nameEn":"ร้านขายเครื่องหอมชัญญ่า","tel":"063-270-9898","floor":"2","zone":"บริเวณพื้นที่ ซีซั่น"},{"room":"ซีซั่น","nameTh":"อาวน์ชา (ซีซั่น)","nameEn":"Owlcha Season","tel":"080-113-1567","floor":"2","zone":"บริเวณพื้นที่ ซีซั่น"},{"room":"ตู้เต่าบิน","nameTh":"ตู้เต่าบิน","nameEn":"","tel":"","floor":"2","zone":"บริเวณลานกลาง ข้างลิฟต์"},{"room":"301-308","nameTh":"มิสเตอร์ ดี.ไอ.วาย","nameEn":"MR.D.I.Y.","tel":"02-116-9664","floor":"3","zone":"บริเวณลานกลม"},{"room":"309","nameTh":"พงศกร ร้านนวด","nameEn":"Pongsakorn Massage","tel":"098-259-1642","floor":"3","zone":"บริเวณลานกลม"},{"room":"309","floor":"3","nameTh":"บ้านสายฝน นวดแผนไทยเพื่อสุขภาพ","nameEn":"Baansaifon Massage","tel":"061-024-1178","zone":"โซนลานกลม (ฮาร์เบอร์แลนด์)"},{"room":"310","nameTh":"พรเกษมคลีนิค","nameEn":"Pornkasemclinic","tel":"091-765-1412","floor":"3","zone":"บริเวณลานกลม"},{"room":"311","nameTh":"พลัสเดนทัล คลินิก","nameEn":"Plus Dental Clinic","tel":"082-367-5870","floor":"3","zone":"บริเวณลานกลม"},{"room":"312","nameTh":"มคลินทร์ คลีนิค","nameEn":"Makalin Clinic","tel":"02-458-2677","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"313","nameTh":"สปาช่า","nameEn":"SparSha Slimming Center","tel":"02-458-2795-8","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"314","nameTh":"แว่นท็อปเจริญ","nameEn":"TOP CHAROEN","tel":"02-458-2484","floor":"3","zone":"บริเวณลานกลาง"},{"room":"315","nameTh":"ทาลิสา คลินิก","nameEn":"TALISA CLINIC","tel":"096 169-8226","floor":"3","zone":"บริเวณลานกลาง"},{"room":"316","nameTh":"กังนัมคลินิก","nameEn":"Gangnam Clinic","tel":"062-395-2323","floor":"3","zone":"บริเวณลานกลาง"},{"room":"317","nameTh":"ลลิสา คลินิก","nameEn":"Laliza Clinic","tel":"096-943-6364","floor":"3","zone":"บริเวณลานกลาง"},{"room":"318","nameTh":"ฮอลลีวูด แอร์สตูดิโอ","nameEn":"Hollywood Hair Studio","tel":"081-639-2254","floor":"3","zone":"บริเวณลานกลาง"},{"room":"319A","nameTh":"อมร คลินิก","nameEn":"Amorn Clinic","tel":"02-059-0495","floor":"3","zone":"บริเวณลานกลาง"},{"room":"319B","nameTh":"เจ้าแม่การ์ตูน","nameEn":"เจ้าแม่การ์ตูน","tel":"063-834-4443","floor":"3","zone":"บริเวณลานกลาง"},{"room":"320-321","nameTh":"ทรัสต์ สหคลินิค","nameEn":"THE TRUST CLINIC","tel":"02-010-0288","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"322","nameTh":"ธนาคาร ยูโอบี","nameEn":"UOB Bank","tel":"02-454-8793","floor":"3","zone":"บริเวณลาน Hall B โซนธนาคาร"},{"room":"323","nameTh":"เดอะ คลินิก","nameEn":"The Klinique","tel":"093-832-9893","floor":"3","zone":"บริเวณลาน Hall B โซนธนาคาร"},{"room":"324","nameTh":"ธนาคาร ไทยพาณิชย์","nameEn":"SCB Bank","tel":"02-458-2806-7","floor":"3","zone":"บริเวณลาน Hall B โซนธนาคาร"},{"room":"325","nameTh":"ธนาคาร กสิกรไทย","nameEn":"K BANK","tel":"02-458 2810-14","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"326","nameTh":"ธนาคาร กรุงไทย","nameEn":"KTB Bank","tel":"084-075-5374","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"327","nameTh":"ธนาคาร กรุงศรี","nameEn":"Krungsri Bank","tel":"02-301-1096","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"328A","nameTh":"ลุดอราว คลินิก","nameEn":"Look Around Clinic","tel":"094-679-5565","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"328B","nameTh":"เมืองไทย ประกันชีวิต","nameEn":"Muang Thai Life Assurance","tel":"02-458-2505","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"329","nameTh":"ธนาคาร ไทยเครดิต เพื่อรายย่อย","nameEn":"TCR BANK","tel":"02-458-2818-20","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"330A","nameTh":"อทิตาคลีนิค","nameEn":"Atita Clinic","tel":"094-999-1986","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"330B","nameTh":"จุดบริการด่วนมหานคร","nameEn":"BMA EXPRESS","tel":"02-413-0568 ต่อ 6639","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"331A","nameTh":"ธนาคาร อาคารสงเคราะห์","nameEn":"GHB Bank","tel":"02-458-2960-3","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"331B","nameTh":"สำนักงานพัฒนาฝีมือและแรงงาน","nameEn":"สำนักงานพัฒนาฝีมือและแรงงาน","tel":"02-458-2713-5","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"332","nameTh":"ธนาคาร เกียรตินาคินภัทร","nameEn":"Kiatnakinphatr Bank","tel":"081-959-4228","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"333","nameTh":"ธนาคาร ออมสิน","nameEn":"GSB Bank","tel":"02-458-2475","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"334","nameTh":"ธนาคาร ทหารไทยธนชาต","nameEn":"TTB Bank","tel":"02-458-2976-78","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"335","nameTh":"ซูพรีม","nameEn":"Supreme","tel":"090-009-9397","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"336","nameTh":"แลปเอ็กซ์","nameEn":"L.A.B. X","tel":"094-215-5716","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"337A","nameTh":"ดร.จิ๊บ","nameEn":"Dr.jib","tel":"086-781-3062","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"337B","nameTh":"เดอะฟอร์เรส คลินิก","nameEn":"The Forrest Clinic","tel":"02-458-2776","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"338","nameTh":"เชอคลินิค","nameEn":"Cher Clinic","tel":"084-994-9262","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"339","nameTh":"นิติพล คลินิค","nameEn":"NITIPON Clinic","tel":"02-458-2829","floor":"3","zone":"บริเวณลาน Hall B"},{"room":"340","nameTh":"ทรู","nameEn":"TRUE","tel":"Call Center 1242","floor":"3","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"341","nameTh":"ยัวร์เฟช","nameEn":"Your Face","tel":"02-458-2828","floor":"3","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"342","nameTh":"แฮร์เซ็นเตอร์","nameEn":"HairCenter","tel":"","floor":"3","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"343","nameTh":"ยศสินี คลินิก","nameEn":"Yotsinee Clinic","tel":"02-458-2836","floor":"3","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"344-345","nameTh":"ร้านโมย่า","nameEn":"Moya","tel":"095-931-2967","floor":"3","zone":"บริเวณลานกลาง"},{"room":"346","nameTh":"ดิจิตอล คาร์เฟ่ เจมาร์ท","nameEn":"Digital Cafe by Jaymart","tel":"02-482-9577","floor":"3","zone":"บริเวณลานกลาง"},{"room":"347","nameTh":"โคเวอร์แลนด์อาททอย","nameEn":"Clover Land Art Toy","tel":"02-458-2612","floor":"3","zone":"บริเวณลานกลาง"},{"room":"347A","nameTh":"แอทดีไซน์ สเตชั่น","nameEn":"At Design Station","tel":"086-110-5555","floor":"3","zone":"บริเวณลานกลาง"},{"room":"347B","nameTh":"นิฟฟี่คลินิก","nameEn":"Niffy Clinic","tel":"02-119-7649","floor":"3","zone":"บริเวณลานกลาง โซน IT"},{"room":"348","nameTh":"ปันกัน","nameEn":"PANKAN","tel":"02-301-1096","floor":"3","zone":"บริเวณ โซน IT"},{"room":"349","nameTh":"มอส คลินิก","nameEn":"MOS Dental Clinic","tel":"064-997-0670","floor":"3","zone":"บริเวณ โซน IT"},{"room":"350","nameTh":"ทัช มาย แฮร์ไทย","nameEn":"Touch My Hair","tel":"063-1788-400","floor":"3","zone":"บริเวณ โซน IT"},{"room":"351-352","floor":"3","nameTh":"ไปรษณีย์ไทย","nameEn":"Thailand Post","tel":"02-458-2500","zone":"บริเวณ โซน IT  เปิด 11:00 น. - 20:00 น."},{"room":"353","nameTh":"คอม แอนด์ ปริ๊นท์","nameEn":"Com & Print","tel":"02-011-9431","floor":"3","zone":"บริเวณลานกลาง โซน IT"},{"room":"354","nameTh":"ฟิต อันเซอร์","nameEn":"Fit answer","tel":"092-712-3999","floor":"3","zone":"บริเวณลานกลาง โซน IT"},{"room":"355","nameTh":"ซาวน์เช็คคาราโอเกะ","nameEn":"Soundcheck Karaoke","tel":"098-362-4333","floor":"3","zone":"บริเวณ โซน IT"},{"room":"357","nameTh":"ซัมซุง","nameEn":"Samsung Service","tel":"063-474-6920","floor":"3","zone":"บริเวณ โซน IT"},{"room":"358","nameTh":"เจ.ไอ.บี.","nameEn":"J.I.B.","tel":"091-119-0563","floor":"3","zone":"บริเวณ โซน IT"},{"room":"359-360","nameTh":"แอดไวซ์ ดิสทิบิวชั่น","nameEn":"Advice","tel":"02-458-2606","floor":"3","zone":"บริเวณ โซน IT"},{"room":"361","nameTh":"บานาน่า ไอที","nameEn":"Banana IT","tel":"090-880-8021","floor":"3","zone":"บริเวณ โซน IT"},{"room":"362","nameTh":"เอ ไอ เอส","nameEn":"AIS","tel":"Call Center 1175","floor":"3","zone":"บริเวณลานกลาง"},{"room":"FB3/02","nameTh":"คิตะทีสแตนด์","nameEn":"Kita Tea Stand","tel":"063-118-6004","floor":"3","zone":"บริเวณลานกลาง"},{"room":"FB3/03","nameTh":"เอแคร์ ทอยส์","nameEn":"Acare Toys","tel":"086-345-4451","floor":"3","zone":"บริเวณลานกลาง"},{"room":"FB3/05","nameTh":"อินทนิล คอฟฟี่","nameEn":"Inthanin","tel":"080-224-4885","floor":"3","zone":"บริเวณลานกลาง"},{"room":"FB3/07","nameTh":"ซุปเปอร์ริช","nameEn":"SuperRich","tel":"02-057-8888","floor":"3","zone":"บริเวณลานซีซั่น โซนธนาคาร"},{"room":"IT/03","nameTh":"108 คอนเนค","nameEn":"108 Connect","tel":"02-458-2949","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/05","nameTh":"เอ็นพี โมบายล์","nameEn":"NP Mobile","tel":"092-527-3042","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/06","nameTh":"รีบูท","nameEn":"Reboot","tel":"062-641-9256","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/09","nameTh":"คิงเทค","nameEn":"Kingtech IT","tel":"084-085-8536","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/10","nameTh":"โบนันซ่าไอที เซอร์วิส","nameEn":"BonanZa IT Service","tel":"081-576-7943","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/11","nameTh":"โน๊ตบุ๊คเซอร์วิสเซ็นเตอร์","nameEn":"Notebook Service Center","tel":"086-789-6393","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/13","nameTh":"แอทดีไซน์สเตชั่น","nameEn":"At Design Station","tel":"086-110-5555","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/14","nameTh":"คอมแอนด์ปริ้นท์","nameEn":"Com and Print","tel":"086-110-5555","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/15","nameTh":"เอ็มเคบีคอมพิวเตอร์","nameEn":"MKB Computer","tel":"081-836-8284","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/16","nameTh":"แอทดีไซน์สเตชั่น","nameEn":"At Design Station","tel":"086-110-5555","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/17","nameTh":"พีเค คอม","nameEn":"PK Com","tel":"086-563-4909","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/19","nameTh":"ลิงค์คอมพิวเตอร์","nameEn":"Link Computer","tel":"063-239-9424","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/20","nameTh":"วีไอพีโน็ตบุ๊ค","nameEn":"V.I.P notebook","tel":"093-355-2993","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/23","nameTh":"108ฟิล์มแอนด์แมค","nameEn":"108 Film & Mac","tel":"02-458-2949","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/24","nameTh":"24ทเวนตี้โฟร์","nameEn":"24TWENTY FOUR","tel":"080-340-4003","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/25-IT/26","nameTh":"อิงค์ซัพพลาย","nameEn":"Ink Supply","tel":"099-452-9989","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/27","nameTh":"เจแอนด์เคซีเคียวริตี้เวิลด์","nameEn":"J&K Security World","tel":"02-458-2679","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/28","nameTh":"บีทูเอช เบสทูโฮม","nameEn":"B2H (best2hom.com)","tel":"02-458-2843","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/29-IT/30","nameTh":"ฟิกซ์ อิท","nameEn":"Fix IT","tel":"080-995-6661","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/31","nameTh":"ไอทีเวิลด์คอมพิวเตอร์","nameEn":"IT World Computer","tel":"086-354-9785","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/32","nameTh":"ยูทากะ","nameEn":"Yutaka","tel":"02-458-2816-7","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/33-IT/34","nameTh":"ซิกม่าคอม","nameEn":"Sigma Com","tel":"02-011-0266","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/35","nameTh":"ซีเอส คอมซัพพลาย","nameEn":"C.S. COM SUPPLY","tel":"02-458-2959","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/37","nameTh":"เนค","nameEn":"NEC","tel":"02-458-2499","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/38-IT/39","nameTh":"ซีต้าคอมพิวเตอร์","nameEn":"ZETA COMPUTER","tel":"081-571-0310","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/40","nameTh":"เจทีเอสนินจา","nameEn":"J.T.S. Ninja","tel":"02-013-4339","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/41","nameTh":"เบเบโฟน","nameEn":"Bebe phone","tel":"063-835-9774","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/44","nameTh":"บิ๊กคาเมร่า","nameEn":"Big Camera","tel":"063-202-7159","floor":"3","zone":"บริเวณ โซน IT"},{"room":"IT/45","nameTh":"อีซีมอลล์","nameEn":"EC Mall","tel":"085-315-2525","floor":"3","zone":"บริเวณ โซน IT"},{"room":"ITK3/01","nameTh":"คอมสมาร์ท","nameEn":"Com Smart","tel":"081-425-4478","floor":"3","zone":"บริเวณ โซน IT"},{"room":"MK3/03","nameTh":"ERGO","nameEn":"ERGO","tel":"","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/05","nameTh":"เนาวรัตน์ เจมส์","nameEn":"Naowarat Gems","tel":"094-257-4473","floor":"3","zone":"บริเวณ โซน ธนาคาร"},{"room":"MK3/06","nameTh":"ซุปเปอร์ริช","nameEn":"SuperRich","tel":"02-057-8888","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/08","nameTh":"มิสเตอร์ทาม","nameEn":"Mr.Time","tel":"092-828-6902 / 099-445-2232","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/09","nameTh":"ร้านเพชรคุณฝัน","nameEn":"Phet Khun Fan","tel":"083-928-3283 / 080-293-9996","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/10","nameTh":"ทเวลฟ วิคตอรี่","nameEn":"Twelve victory","tel":"02-053-8355 / 096-974-7449","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/12","nameTh":"โฟกัส ฟิล์มกันรอย","nameEn":"Focus","tel":"097-079-0419","floor":"3","zone":"บริเวณลานกลาง"},{"room":"MK3/14","nameTh":"Huawei","nameEn":"Huawei","tel":"","floor":"3","zone":"บริเวณลานกลาง"},{"room":"MK3/15","nameTh":"CLOUD 9","nameEn":"CLOUD 9","tel":"","floor":"3","zone":"บริเวณลานกลาง"},{"room":"MK3/16","nameTh":"คลิ๊ก โฟน","nameEn":"CLICK PHONE","tel":"080-222-2182","floor":"3","zone":"บริเวณลานกลาง Hall A"},{"room":"MK3/22","nameTh":"Omni Watch","nameEn":"Omni Watch","tel":"","floor":"3","zone":"บริเวณลานกลาง หน้าเจมาร์ท"},{"room":"MK3/23","nameTh":"บัดดี้ แลนด์","nameEn":"BUDDY LAND","tel":"","floor":"3","zone":"บริเวณ โซน IT"},{"room":"MK3/24A","nameTh":"โคเวย์","nameEn":"COWAY","tel":"","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"MK3/24B","nameTh":"เทเวศประกันภัย","nameEn":"Deves Insurance","tel":"090-980-6682","floor":"3","zone":"บริเวณ โซนธนาคาร"},{"room":"OP3/04","nameTh":"เสี่ยวมี่ซ่อม","nameEn":"Xiaomi Service","tel":"093-132-4091","floor":"3","zone":"บริเวณลานกลาง"},{"room":"OP3/05-OP3/06","nameTh":"ธนาคาร กรุงเทพ","nameEn":"BBL BANK","tel":"02-458-2966-8","floor":"3","zone":"บริเวณลานซีซั่น โซน ธนาคาร"},{"room":"OP3/07","nameTh":"บานาน่า ไอที","nameEn":"Banana IT","tel":"082-049-6429","floor":"3","zone":"บริเวณลานซีซั่น โซน ธนาคาร"},{"room":"OP3/08","nameTh":"ไอที ซิตี้","nameEn":"IT CITY","tel":"02-458-2491","floor":"3","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"OP3/09","nameTh":"บานาน่า ไอที","nameEn":"Banana IT","tel":"02-458-2792","floor":"3","zone":"บริเวณลานกลาง"},{"room":"OP3/09","nameTh":"อมนิ","nameEn":"Daneil Wellington(OMNI)","tel":"099-497-8558","floor":"3","zone":"บริเวณลานกลาง"},{"room":"OP3/10","nameTh":"เทเวศประกันภัย","nameEn":"Deves Insurance","tel":"090-980-6682","floor":"3","zone":"บริเวณลานซีซั่น โซน ธนาคาร"},{"room":"OP3/11","nameTh":"เสี่ยวมี่ซ่อม","nameEn":"Xiaomi Service","tel":"093-132-4091","floor":"3","zone":"บริเวณลานกลาง"},{"room":"SB348","nameTh":"เดอะอัพไอที","nameEn":"The Up IT","tel":"02-117-2774","floor":"3","zone":"บริเวณลานกลาง"},{"room":"400","nameTh":"วิทยาลัยดุริยางคศิลป์","nameEn":"College of Music Mahidol University","tel":"02-458-2680-1","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"401","nameTh":"ฮาเบอร์ แลนด์","nameEn":"Habor land","tel":"065-848-1000","floor":"4","zone":"บริเวณ ลานกลม"},{"room":"402A","nameTh":"Moyu Meow","nameEn":"Moyu Meow","tel":"","floor":"4","zone":"ลานกลาง"},{"room":"402A","nameTh":"โมยุ เหมียว","nameEn":"MoYo Meow Solo Sauerkraut Fish","tel":"","floor":"4","zone":"บริเวณหน้า HBL"},{"room":"402B","nameTh":"จางเลี่ยงหม่าล่าทั่ง","nameEn":"Zhangliang Malatang","tel":"062-713-2872","floor":"4","zone":"บริเวณหน้า HBL"},{"room":"403","nameTh":"สุคิยะ","nameEn":"Sukiya","tel":"063-506-2719","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"404","nameTh":"สุกี้นางพญา","nameEn":"Suki Nangphaya","tel":"095-558-8307","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"405","nameTh":"ฮะจิบังราเมน","nameEn":"Hajiban","tel":"02-458-2509","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"406","nameTh":"ซูชิ พลัส","nameEn":"Sushi Plus","tel":"02-458-2629","floor":"4","zone":"บริเวณลานกลาง"},{"room":"407","nameTh":"ซูกิชิ","nameEn":"Sukishi Korean Charcoal Grill","tel":"092-439-2655","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"408","nameTh":"นารายณ์พิซเซอเรีย","nameEn":"NARAI PIZZERIA","tel":"02-118-6327","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"409A","nameTh":"อากะ","nameEn":"AKA Japanese Restaurant","tel":"096-843-7320","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"409B","nameTh":"ยาโยอิ","nameEn":"Yayoi","tel":"095-374-8885","floor":"4","zone":"บริเวณ ลานกลางหน้า สตรีทกรูเม่ร์"},{"room":"416-417","nameTh":"โออิชิ บุฟเฟ่ต์","nameEn":"OISHI BUFFET","tel":"095-207-4629","floor":"4","zone":"บริเวณ ลานซีซั่น"},{"room":"418","nameTh":"ดุ๊ก กิ","nameEn":"Dookki","tel":"063-886-3270","floor":"4","zone":"บริเวณ ลานซีซั่น"},{"room":"419","nameTh":"แมนดารินสุกี้ติ่มซำ ฮาลาลบุฟเฟต์","nameEn":"Mandarin Suki","tel":"083-475-0505","floor":"4","zone":"บริเวณ ลานซีซั่น"},{"room":"420A-420B","nameTh":"เอี่ยวไถ่","nameEn":"Earwthai","tel":"","floor":"4","zone":"บริเวณ ลานซีซั่น"},{"room":"421","nameTh":"ชาบูชิ","nameEn":"Shabushi","tel":"095-207-4729","floor":"4","zone":"บริเวณลานกลาง"},{"room":"422","nameTh":"โออิชิ ราเมน","nameEn":"Oishi Ramen","tel":"095-374-5157","floor":"4","zone":"บริเวณลานกลาง"},{"room":"423","nameTh":"เอ็มเค สุกี้","nameEn":"MK Restaurant","tel":"083-099-6378","floor":"4","zone":"บริเวณลานกลาง"},{"room":"425-426","nameTh":"บาร์บีคิว พลาซ่า","nameEn":"Bar-B-Q PLAZA","tel":"089-920-4708","floor":"4","zone":"บริเวณลานกลาง หน้าหน้าลิฟต์"},{"room":"427","nameTh":"ซูชิโร่","nameEn":"Sushiro","tel":"02-458-2939","floor":"4","zone":"บริเวณลานกลาง"},{"room":"428","nameTh":"นีโอสุกี้","nameEn":"Neo Suki","tel":"02-458-2622","floor":"4","zone":"บริเวณลานกลาง หน้า HBL"},{"room":"429","nameTh":"ซานตาเฟ่ สเต็ก","nameEn":"Santafe","tel":"091-120-2169","floor":"4","zone":"บริเวณลานกลาง หน้า HBL"},{"room":"438","nameTh":"แมททาเลนท์บายด็อกเตอร์หญิง","nameEn":"Math Talent by Dr.Ying","tel":"082-058-839","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"439","nameTh":"โฟร์พลัส","nameEn":"4 Plus Learning Center","tel":"082-646-6945","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"440","nameTh":"S.A.M & S.A.E","nameEn":"S.A.M & S.A.E","tel":"097-456-1455","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"441","nameTh":"โค้ชชิ่งอิงลิช","nameEn":"Coaching English","tel":"099-331-1177","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"442","nameTh":"โรงเรียนดนตรียามาฮ่า","nameEn":"YAMAHA","tel":"02-458-2722","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"444","nameTh":"สตาร์เมคเกอร์","nameEn":"Star maker","tel":"081-359-6347","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"445","nameTh":"อินลิงกัว","nameEn":"Inlingua","tel":"02-454-8921","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"446","nameTh":"ติวเตอร์เฮ้าส์","nameEn":"Tutor House","tel":"02-458-2669","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"447","nameTh":"อีซีซี","nameEn":"ECC","tel":"02-454-8920","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"448","nameTh":"อีแม็ธ","nameEn":"ei math","tel":"093-258-5897","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"449","nameTh":"คุมอง","nameEn":"Kumon","tel":"091-896-4565","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"450B","nameTh":"พอลฟริช อิงริส","nameEn":"PalFish English","tel":"ติดต่อ: LineOA: @palfish","floor":"4","zone":"บริเวณ โซนการศึกษา HBL"},{"room":"451","nameTh":"ไอ แคน รี้ด","nameEn":"I can read","tel":"082-478-8555","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"452","nameTh":"มิลค์","nameEn":"Milk","tel":"080-962-6365 (คุณกวาง)","floor":"4","zone":"บริเวณ โซนการศึกษา"},{"room":"FB4/001","nameTh":"แดรี่ควีน","nameEn":"Dairy Queen","tel":"081-116-5170","floor":"4","zone":"บริเวณลานกลาง"},{"room":"FB4/002","nameTh":"คิเซกิ","nameEn":"Kiseki","tel":"085-062-7923","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/004","nameTh":"เฮงชา","nameEn":"Heng Cha","tel":"080-047-4562","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/005","nameTh":"เบค อะ วิช","nameEn":"Bake a wish","tel":"095-193-3042","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/006","nameTh":"โกลด์เคอรี่","nameEn":"Gold Curry","tel":"02-458-2788","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/007","nameTh":"หนองโพ","nameEn":"Nong Pho","tel":"098-408-9604","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/009","nameTh":"ยอดชา","nameEn":"Yodcha","tel":"061-916-9742","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"FB4/010","nameTh":"บูสต์จูซบาร์","nameEn":"Boost Juice Bars","tel":"061-021-6542","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"MK4/001","nameTh":"จินเทลล์ (เกาอี้นวด)","nameEn":"GINTELL","tel":"061-021-6542","floor":"4","zone":"บริเวณลานกลาง หน้า สุคิยะ"},{"room":"MK4/002-003","nameTh":"บิบบอมบ์ กาชาปอง","nameEn":"Bib Bomb Gashapong","tel":"","floor":"4","zone":"บริเวณลานกลาง หน้าBBQ"},{"room":"MK4/004","nameTh":"มิลค์","nameEn":"Milk Nids Nalon & Nails","tel":"080-962-6365 (คุณกวาง)","floor":"4","zone":"บริเวณลานกลาง หน้าลิฟต์"},{"room":"MK4/006","nameTh":"เหมืองเงิน","nameEn":"MN muaeng ngern","tel":"085-983-5511","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"MK4/007","nameTh":"ทอยทิฟาย","nameEn":"Toytify","tel":"096-658-6564","floor":"4","zone":"บริเวณลานกลาง หน้า สุกี้นางพญา"},{"room":"MK4/009","nameTh":"โครตรอน (เกาอี้นวด)","nameEn":"KROTRON","tel":"","floor":"4","zone":"บริเวณลานกลาง หน้า โออิชิ"},{"room":"OP4/430","nameTh":"ซิสเล่อ","nameEn":"Sizzler","tel":"061-387-1195","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"OP4/432","nameTh":"ซีเอ็ดบุ๊ค","nameEn":"SE-ED BOOK","tel":"02-454-2484","floor":"4","zone":"บริเวณ ลานกลาง"},{"room":"SG/03","nameTh":"พร แหนมเนือง","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/04","nameTh":"โชนัน","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/05","nameTh":"เล่งหงษ์ บายหมวย","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/06","nameTh":"การิม โรตีมะตะบะ","nameEn":"","tel":"066-112-0410","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/07","nameTh":"โกเฮงราชาก๋วยเตี๋ยวเนื้อ","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/08","nameTh":"คินซ่า เกี๊ยวซ่า","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/09","nameTh":"สุกี้เมาเวอริค","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/10","nameTh":"ผัด ผัด","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/11","nameTh":"แอมเอย","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/12","nameTh":"ขาหมูกรอบ บายเชฟเดย์","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/13","nameTh":"ห่านพะโล้ท่าดินแดง","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/14","nameTh":"เข่งหยกทอง","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/15","nameTh":"สยามอินเดีย","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/16","nameTh":"ดราก้อนโบ๊ท (เกี๊ยวจีนพระราม 9)","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/17","nameTh":"ผัดไทยครัวมาวิน","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SG/18-19","nameTh":"ข้าวมันไก่สิงคโปร์ต้นตำหรับมณเฑียรby เชฟหนู","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/01","nameTh":"ลิตเติ้ล ดราก้อน","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/02","nameTh":"โอชา มหาสมุทร","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/03","nameTh":"ครีมสตูดิโอ","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/04","nameTh":"ร้านน้ำพริกบ้านย่า น้ำยาบ้านยาย","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/05","nameTh":"ลุงเงินกาแฟหม้อดิน","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/09","nameTh":"วุฒิกอ ครัวจีนแคะ","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/10","nameTh":"เต้าฮวยเป็ดแดง","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/11","nameTh":"คุณทองเย็นตาโฟ","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/12","nameTh":"Sweet Time","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/13","nameTh":"ก๋วยเตี๋ยวเรือเสือหน้าหยก","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"SK/14","nameTh":"ตำนานหมี่","nameEn":"","tel":"","floor":"4","zone":"บริเวณ Street Gourmet"},{"room":"501","nameTh":"โรงหนัง อีจีวี","nameEn":"EGV","tel":"02-458-2990","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"502-503","nameTh":"สำนักงาน ซีคอน","nameEn":"Seacon Bangkae","tel":"02-454-7777","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"504","nameTh":"สำนักงานสรรพากร","nameEn":"","tel":"02-454-8618-20 ต่อ 0","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"505","nameTh":"สำนักงานสรรพากรเขตภาษีเจริญ","nameEn":"","tel":"02-413-0334","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"510","nameTh":"โรงเรียนอัญญา","nameEn":"Aunya School","tel":"065-468-7894","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"511-514","nameTh":"เอยูเอ","nameEn":"A.U.A","tel":"062-130-0502","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"515","nameTh":"โมเดิร์น โยคะ","nameEn":"Modern Yoga","tel":"097-045-4645","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"516","nameTh":"ทรี สตูดิโอ","nameEn":"Three Studio","tel":"065-746-6365","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"517","nameTh":"แพนด้า ไชนิส","nameEn":"Panda Chinese","tel":"064-252-8352","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"519","nameTh":"คิดส์เคลฟเว่อร์","nameEn":"Kid Clever","tel":"094-698-7295","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"520","nameTh":"กิฟเต็ดสเปช","nameEn":"Gifted Space","tel":"098-280-5156","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"521","nameTh":"เฟอร์เฟคอาร์ต","nameEn":"Perfect Art","tel":"089-236-9789","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"522","nameTh":"แมทซ์เฮาส์","nameEn":"MATCH HOUSE","tel":"02-458-2645","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"SB/502","nameTh":"โยคะศาสตร์และการพัฒนา","nameEn":"","tel":"","floor":"5","zone":"บริเวณ โซนการศึกษา"},{"room":"606-608","nameTh":"เอ็นเคบอร์ดเกม","nameEn":"NK Boardgame","tel":"065-412-3939","floor":"6","zone":"บริเวณ โซนการศึกษา"}];/* ══════════════════════════════════════════════════════════
+   FLOOR CONFIG — สีประจำชั้น (ตรงกับปุ่มลิฟต์ใน CSS token --f-*)
+   ทำไมแยกเป็น object นี้: ใช้ map สีเดียวกันได้ทั้ง badge, การ์ด,
+   แถบสถิติ และปุ่มลิฟต์ ไม่ต้องเขียนสีซ้ำหลายที่
+══════════════════════════════════════════════════════════ */
+const FLOORS = ['ALL','B','1','2','3','4','5','6'];
+const FLOOR_NAME = {ALL:'ทุกชั้น',B:'ชั้น B',1:'ชั้น 1',2:'ชั้น 2',3:'ชั้น 3',4:'ชั้น 4',5:'ชั้น 5',6:'ชั้น 6'};
+const FLOOR_COLOR = {ALL:'var(--f-ALL)',B:'var(--f-B)',1:'var(--f-1)',2:'var(--f-2)',3:'var(--f-3)',4:'var(--f-4)',5:'var(--f-5)',6:'var(--f-6)'};
+
+/* ── STATE ──
+   ข้อมูลเก็บใน localStorage เพื่อให้แก้ไขแล้วอยู่ถาวรในเครื่อง
+   ถ้ายังไม่เคยแก้ไข ใช้ DEFAULT_SHOPS (ข้อมูลต้นฉบับ 422 ร้าน) */
+let shops = [];
+try{
+  const saved = localStorage.getItem('sbk_dir_v2');
+  shops = saved ? JSON.parse(saved) : DEFAULT_SHOPS.map(s=>({...s}));
+}catch(e){ shops = DEFAULT_SHOPS.map(s=>({...s})); }
+
+let currentFloor = 'ALL';
+let currentSearch = '';
+let searchDebounce = null;
+/* จำโหมดมุมมองที่เลือกไว้ใน localStorage เพื่อไม่ต้องเลือกใหม่ทุกครั้งที่เปิดแอป */
+let currentView = localStorage.getItem('sbk_view') || 'grid';
+
+function setView(v){
+  if(v===currentView) return;
+  currentView = v;
+  try{ localStorage.setItem('sbk_view', v); }catch(e){}
+  document.getElementById('viewGridBtn').classList.toggle('on', v==='grid');
+  document.getElementById('viewTableBtn').classList.toggle('on', v==='table');
+  haptic(8);
+  render();
+}
+
+function persist(){
+  try{ localStorage.setItem('sbk_dir_v2', JSON.stringify(shops)); }
+  catch(e){ toast('บันทึกลง localStorage ไม่สำเร็จ (พื้นที่เต็ม?)','error'); }
+}
+
+/* ══════════ ELEVATOR PANEL BUILD ══════════
+   สร้างปุ่มลิฟต์ครั้งเดียวตอนโหลด แล้วอัปเดตแค่ตัวเลข/สถานะ on ใน render()
+   เพื่อไม่ต้องสร้าง DOM ใหม่ทุกครั้งที่พิมพ์ค้นหา (ลด layout thrash) */
+function buildElevator(){
+  const row = document.getElementById('elevRow');
+  row.innerHTML = FLOORS.map(f=>{
+    if(f==='ALL'){
+      /* ปุ่ม ALL รวมบทบาทของการ์ด "ร้านค้าทั้งหมด" เดิมไว้ในตัว จึงมีเลย์เอาต์
+         แนวนอน กว้างกว่า และมีสีถาวร ต่างจากปุ่มชั้นเดี่ยวที่ต้องขนาดเท่ากันหมด */
+      return `
+      <button class="elev-btn all-btn${f===currentFloor?' on':''}" id="elev-${f}"
+        onclick="setFloor('${f}')" aria-pressed="${f===currentFloor}">
+        <span class="fl"><i class="fas fa-shop"></i></span>
+        <span class="ct">ร้านค้าทั้งหมด<b id="elev-ct-${f}">0</b></span>
+      </button>`;
+    }
+    return `
+    <button class="elev-btn${f===currentFloor?' on':''}" id="elev-${f}" style="--fc:${FLOOR_COLOR[f]}"
+      onclick="setFloor('${f}')" aria-pressed="${f===currentFloor}">
+      <span class="fl">${f}</span>
+      <span class="ct" id="elev-ct-${f}">0 ร้าน</span>
+    </button>`;
+  }).join('');
+}
+
+function setFloor(f){
+  currentFloor = f;
+  haptic(8);
+  render();
+}
+
+/* ══════════ RENDER ══════════
+   จุดศูนย์กลางของแอป: กรอง → เรียง → วาดการ์ด → อัปเดตสถิติ/ปุ่มลิฟต์
+   เรียกทุกครั้งที่ค้นหา/เปลี่ยนชั้น/แก้ไขข้อมูลเสร็จ */
+function render(){
+  const kw = currentSearch.toLowerCase().trim();
+  const list = shops.filter(s=>{
+    const mf = currentFloor==='ALL' || s.floor===currentFloor;
+    const mk = !kw || [s.nameTh,s.room,s.nameEn||'',s.zone||'',s.tel||''].some(v=>v.toLowerCase().includes(kw));
+    return mf && mk;
+  }).sort((a,b)=> a.floor.localeCompare(b.floor) || a.room.localeCompare(b.room));
+
+  renderElevatorCounts();
+  renderList(list);
+
+  document.getElementById('resultCount').textContent = `${list.length} รายการ`;
+  document.getElementById('resultLabel').textContent = kw
+    ? `ผลค้นหา "${currentSearch}"`
+    : (currentFloor==='ALL' ? 'ร้านค้าทั้งหมด' : FLOOR_NAME[currentFloor]);
+  document.getElementById('totalCountLbl').textContent = `— ${shops.length} ร้านค้าทั้งหมด`;
+}
+
+function renderElevatorCounts(){
+  FLOORS.forEach(f=>{
+    const cnt = f==='ALL' ? shops.length : shops.filter(s=>s.floor===f).length;
+    const el = document.getElementById('elev-ct-'+f);
+    if(el) animateCount(el, cnt, f==='ALL' ? '' : ' ร้าน');
+    const btn = document.getElementById('elev-'+f);
+    if(btn) btn.classList.toggle('on', f===currentFloor);
+  });
+}
+
+/* ── นับตัวเลขไล่ขึ้น/ลง แทนการเปลี่ยนค่าทันที ──
+   ทำให้เห็นการเปลี่ยนแปลงชัดเจนขึ้นเวลาสลับชั้น/ค้นหา (สายตาจับการเปลี่ยนแปลงได้ง่ายกว่า
+   ตัวเลขที่กระโดดเปลี่ยนดื้อๆ) ใช้ requestAnimationFrame + easing แทน setInterval
+   เพื่อให้ลื่นและเบา CPU กว่า */
+const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+function animateCount(el, target, suffix=''){
+  const start = parseInt(el.getAttribute('data-n')||'0', 10);
+  el.setAttribute('data-n', target);
+  if(reduceMotionQuery.matches || start===target){ el.textContent = target+suffix; return; }
+  const dur = 420, t0 = performance.now();
+  function step(now){
+    const p = Math.min((now-t0)/dur, 1);
+    const eased = 1-Math.pow(1-p, 3); // ease-out cubic
+    el.textContent = Math.round(start+(target-start)*eased)+suffix;
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderList(list){
+  const box = document.getElementById('listContainer');
+  box.classList.toggle('table-mode', currentView==='table');
+  box.classList.toggle('grid', currentView==='grid');
+
+  if(!list.length){
+    box.innerHTML = `<div class="empty">
+      <span class="ic">🔍</span><h3>ไม่พบร้านค้าที่ค้นหา</h3>
+      <p>ลองเปลี่ยนคำค้นหา หรือเลือกชั้นอื่น</p>
+      <button onclick="clearSearch();setFloor('ALL')"><i class="fas fa-rotate-right"></i> แสดงทั้งหมด</button>
+    </div>`;
+    return;
+  }
+  if(currentView==='table') renderTableView(list, box);
+  else renderGridView(list, box);
+}
+
+function renderGridView(list, box){
+  box.innerHTML = list.map(s=>{
+    const ri = shops.indexOf(s);
+    const fc = FLOOR_COLOR[s.floor] || FLOOR_COLOR.ALL;
+    const tel = (s.tel||'').trim().split('\n')[0];
+    return `
+    <div class="shop-card" style="--fc:${fc}">
+      <div class="sc-top">
+        <span class="sc-room mono" style="--fc:${fc}"><i class="fas fa-door-open"></i>${escapeHtml(s.room)}</span>
+        <div class="sc-actions">
+          <button onclick="openDrawer(${ri})" aria-label="แก้ไข"><i class="fas fa-pen"></i></button>
+          <button class="del" onclick="deleteShop(${ri})" aria-label="ลบ"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="sc-name">${escapeHtml(s.nameTh)}</div>
+      ${s.nameEn ? `<div class="sc-en">${escapeHtml(s.nameEn)}</div>` : ''}
+      <div class="sc-meta">
+        ${tel ? `<a href="tel:${tel.replace(/[^0-9+]/g,'')}"><i class="fas fa-phone"></i>${escapeHtml(tel)}</a>` : ''}
+        ${s.zone ? `<span class="zn"><i class="fas fa-location-dot"></i>${escapeHtml(s.zone)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  initCardObserver();
+}
+
+/* โหมดตาราง — เหมาะกับการไล่ดู/เทียบข้อมูลจำนวนมากรวดเดียว ต่างจาก Grid ที่เน้นดูทีละร้าน
+   ใช้ <table> จริงเพื่อให้เลื่อนแนวนอนบนมือถือลื่นและหัวตารางติดด้านบน (sticky) ได้ */
+function renderTableView(list, box){
+  const rows = list.map(s=>{
+    const ri = shops.indexOf(s);
+    const fc = FLOOR_COLOR[s.floor] || FLOOR_COLOR.ALL;
+    const tel = (s.tel||'').trim().split('\n')[0];
+    return `
+    <tr style="--fc:${fc}">
+      <td><span class="tbl-room">${escapeHtml(s.room)}</span></td>
+      <td><span class="tbl-floor"><i></i>${FLOOR_NAME[s.floor]||s.floor}</span></td>
+      <td><div class="tbl-name">${escapeHtml(s.nameTh)}</div>${s.nameEn?`<div class="tbl-en">${escapeHtml(s.nameEn)}</div>`:''}</td>
+      <td class="tbl-tel">${tel?`<a href="tel:${tel.replace(/[^0-9+]/g,'')}"><i class="fas fa-phone"></i> ${escapeHtml(tel)}</a>`:'-'}</td>
+      <td>${s.zone?escapeHtml(s.zone):'-'}</td>
+      <td>
+        <div class="tbl-actions">
+          <button onclick="openDrawer(${ri})" aria-label="แก้ไข"><i class="fas fa-pen"></i></button>
+          <button class="del" onclick="deleteShop(${ri})" aria-label="ลบ"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `
+    <table class="sbk-table">
+      <thead><tr>
+        <th>ห้อง</th><th>ชั้น</th><th>ชื่อร้าน</th><th>เบอร์โทร</th><th>โซน</th><th>จัดการ</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ── การ์ดค่อยๆ ปรากฏเมื่อเลื่อนเข้ามาในจอ (ให้ความรู้สึกลื่นไหล ไม่กระตุก) ── */
+let _cardObserver = null;
+function initCardObserver(){
+  if(_cardObserver) _cardObserver.disconnect();
+  if(!('IntersectionObserver' in window)){
+    document.querySelectorAll('.shop-card').forEach(c=>c.classList.add('visible'));
+    return;
+  }
+  _cardObserver = new IntersectionObserver(entries=>{
+    entries.forEach((entry,i)=>{
+      if(entry.isIntersecting){
+        entry.target.style.transitionDelay = Math.min(i*.03,.25)+'s';
+        entry.target.classList.add('visible');
+        _cardObserver.unobserve(entry.target);
+      }
+    });
+  },{threshold:.06, rootMargin:'0px 0px -20px 0px'});
+  document.querySelectorAll('.shop-card').forEach(c=>_cardObserver.observe(c));
+}
+
+/* ══════════ SEARCH ══════════
+   Debounce 220ms กันเรียก render() ถี่เกินไปตอนพิมพ์เร็ว */
+function onSearchInput(v){
+  document.getElementById('clearBtn').classList.toggle('show', v.length>0);
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(()=>{ currentSearch = v; render(); }, 220);
+}
+function clearSearch(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('clearBtn').classList.remove('show');
+  currentSearch=''; render();
+}
+
+/* ══════════ CRUD ══════════ */
+function openDrawer(index){
+  const isEdit = index > -1;
+  document.getElementById('editIndex').value = index;
+  if(isEdit){
+    const s = shops[index];
+    document.getElementById('f-room').value = s.room;
+    document.getElementById('f-floor').value = s.floor;
+    document.getElementById('f-nameTh').value = s.nameTh;
+    document.getElementById('f-nameEn').value = s.nameEn||'';
+    document.getElementById('f-tel').value = s.tel||'';
+    document.getElementById('f-zone').value = s.zone||'';
+    document.getElementById('drawerTitle').textContent = 'แก้ไขข้อมูลร้าน';
+    document.getElementById('drawerSub').textContent = s.nameTh;
+    document.getElementById('drawerIcon').innerHTML = '<i class="fas fa-pen-to-square"></i>';
+  }else{
+    ['f-room','f-nameTh','f-nameEn','f-tel','f-zone'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-floor').value = currentFloor==='ALL' ? '1' : currentFloor;
+    document.getElementById('drawerTitle').textContent = 'เพิ่มร้านค้าใหม่';
+    document.getElementById('drawerSub').textContent = 'กรอกข้อมูลร้านค้าให้ครบถ้วน';
+    document.getElementById('drawerIcon').innerHTML = '<i class="fas fa-store"></i>';
+  }
+  document.getElementById('drawerBg').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+  document.getElementById('fab').classList.add('rot');
+}
+function closeDrawer(){
+  document.getElementById('drawerBg').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+  document.getElementById('fab').classList.remove('rot');
+}
+
+function saveShop(){
+  const room = document.getElementById('f-room').value.trim();
+  const nameTh = document.getElementById('f-nameTh').value.trim();
+  if(!room || !nameTh){
+    toast('กรุณากรอกเลขห้องและชื่อร้านให้ครบ','error');
+    return;
+  }
+  const data = {
+    room, floor: document.getElementById('f-floor').value,
+    nameTh, nameEn: document.getElementById('f-nameEn').value.trim(),
+    tel: document.getElementById('f-tel').value.trim(),
+    zone: document.getElementById('f-zone').value.trim()
+  };
+  const idx = parseInt(document.getElementById('editIndex').value, 10);
+  const isEdit = idx > -1;
+  if(isEdit) shops[idx] = data; else shops.push(data);
+  persist();
+  closeDrawer();
+  render();
+  toast(isEdit ? 'แก้ไขข้อมูลเรียบร้อยแล้ว' : 'เพิ่มร้านค้าใหม่เรียบร้อยแล้ว');
+  haptic(10);
+}
+
+function deleteShop(i){
+  const name = shops[i].nameTh;
+  if(!confirm(`ยืนยันการลบ "${name}" ?`)) return;
+  shops.splice(i,1);
+  persist();
+  render();
+  toast(`ลบ "${name}" แล้ว`, 'info');
+}
+
+function resetToDefault(){
+  closeExpMenu();
+  if(!confirm(`รีเซ็ตข้อมูลกลับเป็น ${DEFAULT_SHOPS.length} ร้านค้าต้นฉบับ?\nข้อมูลที่แก้ไขทั้งหมดจะหายไป`)) return;
+  shops = DEFAULT_SHOPS.map(s=>({...s}));
+  localStorage.removeItem('sbk_dir_v2');
+  render();
+  toast('รีเซ็ตข้อมูลต้นฉบับเรียบร้อยแล้ว');
+}
+
+/* ══════════ EXPORT / IMPORT ══════════ */
+function getFilteredForExport(){
+  const kw = currentSearch.toLowerCase().trim();
+  return shops.filter(s=>{
+    const mf = currentFloor==='ALL' || s.floor===currentFloor;
+    const mk = !kw || [s.nameTh,s.room,s.nameEn||'',s.zone||'',s.tel||''].some(v=>v.toLowerCase().includes(kw));
+    return mf && mk;
+  }).sort((a,b)=> a.floor.localeCompare(b.floor) || a.room.localeCompare(b.room));
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function exportJSON(){
+  closeExpMenu();
+  const d = getFilteredForExport();
+  const blob = new Blob([JSON.stringify(d,null,2)], {type:'application/json'});
+  const a = Object.assign(document.createElement('a'), {href:URL.createObjectURL(blob), download:`SBK_Directory_${todayStr()}.json`});
+  a.click();
+  toast(`ส่งออก JSON แล้ว ${d.length} รายการ`);
+}
+
+function exportExcel(){
+  closeExpMenu();
+  if(typeof XLSX==='undefined'){ toast('โหลดไลบรารี Excel ไม่สำเร็จ ลองใหม่อีกครั้ง','error'); return; }
+  const d = getFilteredForExport();
+  const hdr = ['ลำดับ','เลขห้อง','ชั้น','ชื่อร้าน (ไทย)','ชื่อร้าน (อังกฤษ)','เบอร์ติดต่อ','บริเวณ / โซน'];
+  const rows = d.map((s,i)=>[i+1, s.room, FLOOR_NAME[s.floor]||s.floor, s.nameTh, s.nameEn||'', s.tel||'', s.zone||'']);
+  const ws = XLSX.utils.aoa_to_sheet([hdr, ...rows]);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:10},{wch:36},{wch:30},{wch:20},{wch:36}];
+  const rng = XLSX.utils.decode_range(ws['!ref']);
+  for(let c=rng.s.c;c<=rng.e.c;c++){
+    const addr = XLSX.utils.encode_cell({r:0,c});
+    if(ws[addr]) ws[addr].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'6D5DF4'}}, alignment:{horizontal:'center',wrapText:true}};
+  }
+  ws['!freeze'] = {xSplit:0, ySplit:1};
+  ws['!autofilter'] = {ref: ws['!ref']};
+  const wb = XLSX.utils.book_new();
+  const lbl = currentFloor==='ALL' ? 'ทุกชั้น' : 'ชั้น_'+currentFloor;
+  XLSX.utils.book_append_sheet(wb, ws, lbl);
+  XLSX.writeFile(wb, `SBK_Directory_${todayStr()}_${lbl}.xlsx`);
+  toast(`ส่งออก Excel แล้ว ${d.length} รายการ`);
+}
+
+function triggerImport(){
+  closeExpMenu();
+  setTimeout(()=>{ document.getElementById('importFile').click(); }, 120);
+}
+function importJSON(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ev=>{
+    try{
+      const imp = JSON.parse(ev.target.result);
+      if(!Array.isArray(imp)) throw new Error('not array');
+      shops = imp;
+      persist();
+      render();
+      toast(`นำเข้าข้อมูลสำเร็จ ${imp.length} รายการ`);
+    }catch(err){
+      toast('ไฟล์ JSON ไม่ถูกต้อง กรุณาตรวจสอบไฟล์','error');
+    }
+    setTimeout(()=>{ try{ e.target.value=''; }catch(_){} }, 200);
+  };
+  r.readAsText(f);
+}
+
+/* ── Export dropdown menu ── */
+let expOpen = false;
+function toggleExpMenu(e){
+  if(e) e.stopPropagation();
+  expOpen = !expOpen;
+  document.getElementById('expMenu').classList.toggle('open', expOpen);
+}
+function closeExpMenu(){
+  expOpen = false;
+  document.getElementById('expMenu').classList.remove('open');
+}
+document.addEventListener('click', e=>{
+  if(expOpen && !e.target.closest('.exp-wrap')) closeExpMenu();
+});
+
+/* ══════════ DARK MODE ══════════ */
+if(localStorage.getItem('sbk_theme')==='dark'){
+  document.documentElement.classList.add('dark');
+}
+function syncThemeIcon(){
+  const d = document.documentElement.classList.contains('dark');
+  document.getElementById('themeIcon').className = d ? 'fas fa-sun' : 'fas fa-moon';
+}
+function toggleDark(){
+  const d = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('sbk_theme', d?'dark':'light');
+  syncThemeIcon();
+  haptic(8);
+}
+
+/* ══════════ TOAST ══════════ */
+let _toastTimer;
+function toast(msg, type='success'){
+  const t = document.getElementById('toast');
+  const icon = type==='error' ? 'fa-circle-xmark' : type==='info' ? 'fa-circle-info' : 'fa-circle-check';
+  t.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(msg)}`;
+  t.className = `show ${type==='success'?'':type}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>{ t.classList.remove('show'); }, 2800);
+}
+
+/* ══════════ HAPTIC (มือถือ) ══════════ */
+function haptic(ms=10){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+
+/* ── Ripple effect: วงคลื่นกระจายจากจุดแตะ ให้ปุ่มทุกปุ่มดูมีชีวิตชีวาตอนกด ──
+   ใช้ event delegation ตัวเดียวที่ document แทนการผูก listener ทีละปุ่ม
+   เพราะปุ่มจำนวนมาก (การ์ด/แถวตาราง) ถูกสร้างใหม่ทุกครั้งที่ render() จึงต้อง
+   ครอบคลุมปุ่มที่ยังไม่เกิดในตอนโหลดหน้าแรกด้วย */
+document.addEventListener('click', e=>{
+  if(reduceMotionQuery.matches) return;
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const span = document.createElement('span');
+  span.className = 'ripple-fx';
+  span.style.width = span.style.height = size+'px';
+  span.style.left = (e.clientX-rect.left-size/2)+'px';
+  span.style.top = (e.clientY-rect.top-size/2)+'px';
+  btn.appendChild(span);
+  setTimeout(()=>span.remove(), 650);
+});
+
+/* ══════════ INIT ══════════ */
+document.getElementById('searchInput').addEventListener('input', e=>onSearchInput(e.target.value));
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDrawer(); });
+document.getElementById('viewGridBtn').classList.toggle('on', currentView==='grid');
+document.getElementById('viewTableBtn').classList.toggle('on', currentView==='table');
+buildElevator();
+syncThemeIcon();
+render();
+
+/* ── ซ่อนหน้า Intro หลังโชว์ครบเวลา ──
+   ใช้ setTimeout แทนการรอ 'load' event เพราะข้อมูลร้านค้าทั้งหมด render()
+   เสร็จเร็วมาก (ข้อมูลอยู่ใน localStorage/ตัวแปรในไฟล์ ไม่ต้องรอโหลดจากเน็ต)
+   จึงตั้งเวลาคงที่ให้เห็น Intro พอดี ~2 วินาทีตามที่ต้องการ ไม่นานจนน่ารำคาญ */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+setTimeout(()=>{
+  const sp = document.getElementById('splash');
+  if(sp) sp.classList.add('hide');
+}, reduceMotion ? 0 : 2100);
+
+
+</script>
+</body>
+</html>
