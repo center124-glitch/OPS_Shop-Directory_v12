@@ -4,6 +4,11 @@
   ไฟล์เดียว (HTML+CSS+JS) ข้อมูลต้นฉบับ 422 ร้าน (DEFAULT_SHOPS) แก้ไขแล้วเก็บใน localStorage 'sbk_dir_v3'
   ไม่มี backend · โหมดคีออสก์: ต้องแตะหน้าโลโก้เพื่อเข้า + ไม่ใช้งาน 90 วิ ล็อกกลับหน้าโลโก้
 
+  v26 (2026-11-25)
+   · แก้: เมนู "เลือกประเภทร้านค้า" ถูกแถบสัดส่วน/แถบกรอง/หัวรายการวาดทับจนดูโปร่งแสง (เกิดจาก backdrop-filter ของ v25
+     ทำให้เมนูติดอยู่ในชั้นของแผงตัวเอง) → ยกแถวแผงเลือกชั้น/ประเภทขึ้นเป็นชั้นบนสุดของหน้า
+   · แก้: แผนผัง — ปิดการ์ดร้าน (X / แตะที่ว่าง / Esc / ปุ่ม "ดูทั้งชั้น") แล้วซูมกลับเป็นภาพทั้งชั้นสวยๆ เหมือนตอนเปิดเอง
+     (เดิมค้างซูมที่ร้านเดิม ต้องกดปิดแผนผังอย่างเดียว) · Esc ครั้งแรก = ยกเลิกร้านที่เลือก, ครั้งที่สอง = ปิดแผนผัง
   v25 (2026-11-25)
    · ธีมใหม่ทั้งหน้าแดชบอร์ด ให้ต่อเนื่องกับหน้าเข้าระบบ: พื้นหลัง "ล็อบบี้ลิฟต์" (กรมท่า-ม่วง + ดวงแสงสีประจำชั้นลอยช้าๆ + ดาวระยิบ)
      โหมดสว่าง = โทนลาเวนเดอร์อ่อน ดวงแสงพาสเทล · โหมดมืด = โทนเดียวกับหน้าเข้าระบบ
@@ -947,6 +952,13 @@ input[type=text],input[type=tel],select{font-size:16px}
   .sp-auto .sp-prog i{width:100%}
 }
 
+
+/* ══════════ v26: เมนูประเภทต้องลอยเหนือแผงถัดไป ══════════
+   แผงที่มี backdrop-filter สร้าง stacking context ของตัวเอง → z-index ของเมนูมีผลแค่ในแผง
+   จึงยกทั้งแถว .panels-row ขึ้นเหนือแถบสัดส่วน/แถบกรอง/หัวรายการ (แต่ยังต่ำกว่าหัวแอป z:120) */
+.panels-row{position:relative;z-index:60}
+@media(max-width:420px){.mc-act{gap:.3rem}.mc-act button,.mc-act a{font-size:.7rem;gap:.25rem;padding:0 .2rem}}
+.cat-dd-menu{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:0 22px 44px -12px rgba(30,27,75,.4)}
 
 /* ══════════ v25 — ธีม "ล็อบบี้ลิฟต์" ทั้งแอป + อนิเมชัน ══════════ */
 /* ชั้นพื้นหลังแยก (position:fixed) ขยับด้วย transform เท่านั้น — GPU วาด ไม่ต้องวาดหน้าใหม่ทั้งหน้า */
@@ -2979,13 +2991,17 @@ function mapSelect(s, fromOpen, group){
   else mapUpdateLabels();
   if(!fromOpen) haptic(8);
 }
-function mapClearSel(){
+/* ยกเลิกร้านที่เลือก → กลับเป็นแผนผังทั้งชั้น (ซูมออกแบบนุ่มนวล) เหมือนตอนเปิดดูแผนผังปกติ */
+function mapClearSel(keepView){
+  const had = !!MV.sel || mapEl('mapCard').classList.contains('show');
   MV.sel = null;
+  MV.mode = 'browse';
   mapEl('mapSvg').querySelectorAll('.m-u.sel').forEach(g=>g.classList.remove('sel'));
   mapEl('mapPin').hidden = true;
   mapEl('mapNote').textContent = ''; mapEl('mapNote').classList.remove('warn');
   mapHideCard();
-  mapUpdateLabels();
+  if(had && !keepView) mapFit(false);
+  else mapUpdateLabels();
 }
 function mapShowCard(s, group){
   const card = mapEl('mapCard');
@@ -3021,6 +3037,7 @@ function mapShowCard(s, group){
       ${tel1?`<a class="pri" href="tel:${tel1.href}"><i class="fas fa-phone"></i> โทร</a>`:''}
       <button class="fav${isFav(s)?' on':''}" onclick="toggleFavByIndex(${i}); mapShowCard(shops[${i}])"><i class="${isFav(s)?'fas':'far'} fa-heart"></i> ร้านโปรด</button>
       <button onclick="openDrawer(${i})"><i class="fas fa-pen"></i> แก้ไข</button>
+      <button onclick="mapClearSel()" aria-label="ดูทั้งชั้น"><i class="fas fa-expand"></i> ทั้งชั้น</button>
     </div>`;
   card.classList.add('show');
 }
@@ -3112,7 +3129,10 @@ document.addEventListener('keydown', e=>{
   if(e.key === 'Escape'){
     if(isConfirmOpen()){ closeConfirm(false); return; }
     if(catDdOpen){ closeCatDd(); return; }
-    if(isMapOpen() && !document.getElementById('drawer').classList.contains('show')){ closeMap(); return; }
+    if(isMapOpen() && !document.getElementById('drawer').classList.contains('show')){
+      if(MV.sel || document.getElementById('mapCard').classList.contains('show')) mapClearSel(); else closeMap();
+      return;
+    }
     const drawerOpen = document.getElementById('drawer').classList.contains('show');
     const auditOpen  = document.getElementById('auditModal').classList.contains('show');
     const qrOpen     = document.getElementById('qrModal').classList.contains('show');
