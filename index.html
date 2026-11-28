@@ -4,6 +4,13 @@
   ไฟล์เดียว (HTML+CSS+JS) ข้อมูลต้นฉบับ 410 ร้าน (DEFAULT_SHOPS) แก้ไขแล้วเก็บใน localStorage 'sbk_dir_v3'
   ไม่มี backend · โหมดคีออสก์: ต้องแตะหน้าโลโก้เพื่อเข้า + ไม่ใช้งาน 90 วิ ล็อกกลับหน้าโลโก้
 
+  v33 (2026-11-28) — ตรวจทานทั้งระบบ
+   · ค้นหาแม่นขึ้น: แยกคำสลับลำดับได้ ("queen dairy"), ไม่สนเว้นวรรค/ขีด ("dairyqueen", "kbank", "ดอง กิ"),
+     พิมพ์ "ชั้น 3 ไอที" / "3F xiaomi" = กรองชั้นในช่องค้นหา, ร้านที่ชื่อตรงที่สุดขึ้นก่อน, ไฮไลต์ทุกคำ
+   · แก้: ค้นตัวเลขสั้น ("711", "7-11") เคยไปเจอร้านที่เบอร์โทรมีเลขนั้น → ค้นเบอร์ต้อง ≥4 หลัก
+   · แก้: "mrt" เคยเจอ "Mr.Time" (เทียบแบบตัดจุด/เว้นวรรคใช้เฉพาะคำ ≥4 ตัว)
+   · แผนผัง: เลขห้องว่างที่ชิดกันไม่ซ้อนทับกันแล้ว (ซ่อนอันที่ชน คำนวณตามระดับซูม)
+   · ปุ่มไอคอน (ล้างคำค้น/ปิด) มีชื่อสำหรับโปรแกรมอ่านหน้าจอ
   v32 (2026-11-28)
    · แผนผังแสดงห้องครบทุกชั้น โดยเฉพาะร้านใหญ่: ผนังร้านใหญ่ในแบบแปลนบางส่วนเป็นเส้นสีเทาอ่อน (เดิมตัวสร้างแผนผังมองไม่เห็น)
      → เพิ่มระดับ "เส้นจาง" เฉพาะห้องที่หาไม่ได้ · ห้องที่ได้อยู่แล้วไม่เปลี่ยน
@@ -1092,6 +1099,7 @@ input[type=text],input[type=tel],select{font-size:16px}
 .m-en{font-family:var(--mono);font-weight:700;text-anchor:middle;dominant-baseline:middle;pointer-events:none;
   font-size:calc(var(--inv,1) * 9.5px);fill:#8587B5;opacity:0;transition:opacity .2s}
 .map-svg.zr .m-en,.m-e.sel .m-en{opacity:1}
+.map-svg.zr .m-en.clash{opacity:0}
 .dark .m-en{fill:#8F8BC9}
 .map-svg.filtering .m-e{opacity:.5}
 /* โหมดเลือกห้อง */
@@ -1486,7 +1494,7 @@ mark.hl{background:#FDE047;color:#12131A;border-radius:3px;padding:0 1px}
   <div class="top-search">
     <i class="fas fa-magnifying-glass ico"></i>
     <input id="searchInput" type="text" placeholder="ค้นหาร้านค้า, เลขห้อง, เบอร์โทร..." autocomplete="off">
-    <button class="clear" id="clearBtn" onclick="clearSearch()"><i class="fas fa-circle-xmark"></i></button>
+    <button class="clear" id="clearBtn" onclick="clearSearch()" aria-label="ล้างคำค้น" title="ล้างคำค้น"><i class="fas fa-circle-xmark"></i></button>
   </div>
   <div class="top-actions">
     <button class="btn-add-header" onclick="openDrawer(-1)"><i class="fas fa-plus"></i><span class="txt">เพิ่มร้าน</span></button>
@@ -1567,7 +1575,7 @@ mark.hl{background:#FDE047;color:#12131A;border-radius:3px;padding:0 1px}
   <div class="drawer-head">
     <div class="di" id="drawerIcon"><i class="fas fa-store"></i></div>
     <div><h3 id="drawerTitle">เพิ่มร้านค้าใหม่</h3><p id="drawerSub">กรอกข้อมูลร้านค้าให้ครบถ้วน</p></div>
-    <button class="x" onclick="closeDrawer()"><i class="fas fa-xmark"></i></button>
+    <button class="x" onclick="closeDrawer()" aria-label="ปิด" title="ปิด"><i class="fas fa-xmark"></i></button>
   </div>
   <input type="hidden" id="editIndex" value="-1">
   <div class="f-row">
@@ -1601,7 +1609,7 @@ mark.hl{background:#FDE047;color:#12131A;border-radius:3px;padding:0 1px}
   <div class="drawer-head">
     <div class="di" style="background:linear-gradient(150deg,#18B584,#0EA5C4)"><i class="fas fa-clipboard-check"></i></div>
     <div><h3>ตรวจสอบคุณภาพข้อมูล</h3><p>หาเลขห้องซ้ำและข้อมูลที่ยังขาด</p></div>
-    <button class="x" onclick="closeAudit()"><i class="fas fa-xmark"></i></button>
+    <button class="x" onclick="closeAudit()" aria-label="ปิด" title="ปิด"><i class="fas fa-xmark"></i></button>
   </div>
   <div id="auditBody"></div>
 </div>
@@ -1613,7 +1621,7 @@ mark.hl{background:#FDE047;color:#12131A;border-radius:3px;padding:0 1px}
   <div class="drawer-head">
     <div class="di" style="background:linear-gradient(150deg,#6D5DF4,#0EA5C4)"><i class="fas fa-qrcode"></i></div>
     <div><h3>แชร์รายการนี้</h3><p>สแกนเพื่อเปิดรายการที่กรองไว้นี้บนมือถือของคุณ</p></div>
-    <button class="x" onclick="closeShareQR()"><i class="fas fa-xmark"></i></button>
+    <button class="x" onclick="closeShareQR()" aria-label="ปิด" title="ปิด"><i class="fas fa-xmark"></i></button>
   </div>
   <div class="qr-wrap">
     <div class="qr-box" id="qrCodeBox"></div>
@@ -1804,7 +1812,7 @@ function catIcon(n){ return (CAT_META[n]||{}).i || 'fa-shapes'; }
 /* ── STATE ──
    ข้อมูลเก็บใน localStorage เพื่อให้แก้ไขแล้วอยู่ถาวรในเครื่อง
    ถ้ายังไม่เคยแก้ไข ใช้ DEFAULT_SHOPS (ข้อมูลต้นฉบับ 410 ร้าน) */
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v33';
 const VALID_FLOORS = ['B','1','2','3','4','5','6'];
 const FLOOR_RANK = {B:0,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6};
 
@@ -2116,16 +2124,50 @@ function resetFilters(){
    เดิมแยกกันเขียน 2 ที่ แล้วฝั่ง export ลืมกรองหมวดหมู่ = ส่งออกได้ข้อมูลไม่ตรงกับที่เห็นบนจอ */
 /* เงื่อนไขกรองกลาง "ตัวเดียว" — รายการบนจอ, ตัวเลขปุ่มชั้น, ตัวเลขหมวด, แถบสัดส่วน, ส่งออก Excel ใช้ร่วมกันหมด
    skipFloor/skipCat ใช้ตอนนับตัวเลขบนปุ่มชั้น/หมวด (นับตามตัวกรองอื่นที่ค้างอยู่) */
+/* v33: ค้นหาแม่นขึ้น — แยกคำ (สลับลำดับได้), ไม่สนเว้นวรรค/ขีด ("dairyqueen", "kbank", "ดอง กิ"),
+   "ชั้น 3" / "3F" / "ชั้น B" = กรองชั้น, เบอร์โทรต้องพิมพ์ ≥4 หลัก (กัน "7-11" ไปเจอเบอร์ที่มี 711)
+   แยกตัวแปลงคำค้นไว้ที่เดียว + cache ตามข้อความ เพราะ matchesSearch ถูกเรียก 410 ครั้งต่อการ render */
+const _cmp = v => String(v||'').toLowerCase().normalize('NFC').replace(/[\s\-_.\/·,()&'"+]+/g,'');
+const _SQ = {raw:null};
+function searchQuery(){
+  if(_SQ.raw === currentSearch) return _SQ;
+  const kw = currentSearch.toLowerCase().normalize('NFC').trim().replace(/\s+/g,' ');
+  let floor = null;
+  const rest = (' '+kw+' ').replace(/\s(?:ชั้น|fl\.?|floor)\s*(b|[1-6])(?=\s)|\s(b|[1-6])\s*f(?=\s)/gi, (m,a,b)=>{ floor=(a||b).toUpperCase(); return ' '; }).trim().replace(/\s+/g,' ');
+  const digits = /^[\d\s\-+()]+$/.test(rest) ? rest.replace(/\D/g,'') : '';
+  Object.assign(_SQ, {raw:currentSearch, kw, floor, full:rest, ck:_cmp(rest), digits,
+    toks: rest ? [...new Set(rest.split(' '))] : []});
+  return _SQ;
+}
+function _tokHit(t, f, fc){
+  if(t.length === 1) return f.some(v => v.startsWith(t) || v.includes(' '+t));   // ตัวอักษรเดียวนับเฉพาะต้นคำ (กัน "b" เจอทุกร้าน)
+  if(f.some(v => v.includes(t))) return true;
+  const ct = _cmp(t);
+  return ct.length >= 4 && fc.some(v => v.includes(ct));
+}
+/* คะแนนความตรง (ใช้เรียงผลค้นหา): ชื่อ/เลขห้องตรงเป๊ะ > ขึ้นต้นด้วย > มีคำนี้ > เจอที่โซน/ประเภท/เบอร์ */
+function searchScore(s){
+  const q = searchQuery(); if(!q.ck) return 0;
+  const names = [s.nameTh, s.nameEn].map(_cmp), room = _cmp(s.room);
+  if(room === q.ck) return 100;
+  if(names.includes(q.ck)) return 95;
+  if(names.some(v => v.startsWith(q.ck))) return 80;
+  if(room.startsWith(q.ck)) return 70;
+  if(names.some(v => v.includes(q.ck))) return 60;
+  if(q.toks.every(t => names.some(v => v.includes(_cmp(t))))) return 50;
+  return 10;
+}
 function matchesSearch(s){
-  const kw = currentSearch.toLowerCase().trim();
-  if(!kw) return true;
-  if([s.nameTh,s.room,s.nameEn,s.zone,s.tel,s.cat].some(v=>String(v||'').toLowerCase().includes(kw))) return true;
-  /* ค้นเบอร์โทรแบบไม่ต้องพิมพ์ขีด: "0245825" เจอ "02-458-2562" */
-  if(/^[\d\s\-+()]+$/.test(kw)){
-    const d = kw.replace(/\D/g,'');
-    if(d.length>=3 && String(s.tel||'').replace(/\D/g,'').includes(d)) return true;
-  }
-  return false;
+  const q = searchQuery();
+  if(!q.kw) return true;
+  if(q.floor && s.floor !== q.floor) return false;
+  if(!q.full) return true;                               // พิมพ์แค่ "ชั้น 3"
+  if(q.digits.length >= 4 && String(s.tel||'').replace(/\D/g,'').includes(q.digits)) return true;
+  const f  = [s.nameTh, s.room, s.nameEn, s.zone, s.cat, s.tel].map(v => String(v||'').toLowerCase().normalize('NFC'));
+  const fc = f.slice(0,5).map(_cmp);                     // เบอร์โทรไม่ใช้แบบตัดขีด (ใช้กฎ ≥4 หลักด้านบน)
+  if((q.digits ? f.slice(0,5) : f).some(v => v.includes(q.full))) return true;   // คำค้นเป็นตัวเลขล้วน → ไม่เทียบกับเบอร์ (ใช้กฎ ≥4 หลัก)
+  if(q.ck.length >= 4 && fc.some(v => v.includes(q.ck))) return true;            // ตัดเว้นวรรค/จุด เฉพาะคำ ≥4 ตัว (กัน "mrt" เจอ "Mr.Time")
+  return q.toks.length > 1 && q.toks.every(t => _tokHit(t, f, fc));
 }
 function matchesFilters(s, opt={}){
   if(!opt.skipFloor && currentFloor!=='ALL' && s.floor!==currentFloor) return false;
@@ -2134,7 +2176,13 @@ function matchesFilters(s, opt={}){
   return matchesSearch(s);
 }
 function getFilteredShops(){
-  return sortList(shops.filter(s=>matchesFilters(s)));
+  const list = sortList(shops.filter(s=>matchesFilters(s)));
+  /* v33: มีคำค้น + เรียงแบบปกติ → ร้านที่ชื่อตรงที่สุดขึ้นก่อน (sort แบบ stable คงลำดับชั้น/ห้องเมื่อคะแนนเท่ากัน) */
+  if(searchQuery().ck && currentSort.key === 'default'){
+    const sc = new Map(list.map(s => [s, searchScore(s)]));
+    list.sort((a,b) => sc.get(b) - sc.get(a));
+  }
+  return list;
 }
 
 function render(){
@@ -2263,14 +2311,17 @@ function indexMap(){ const m = new Map(); shops.forEach((s,i)=>m.set(s,i)); retu
 
 /* ไฮไลต์คำค้นหา: แยกข้อความเป็นช่วงแล้ว escape ทีละช่วง (ไม่ใส่ HTML ของผู้ใช้ลงไปตรงๆ) */
 function hl(str){
+  /* v33: ไฮไลต์ทุกคำที่ค้น (ไม่ใช่เฉพาะทั้งประโยค) — คำยาวก่อน กันไฮไลต์ซ้อน */
   const t = String(str||'');
-  const kw = currentSearch.trim().toLowerCase();
-  if(!kw) return escapeHtml(t);
-  const low = t.toLowerCase();
-  let out = '', i = 0, j;
-  while((j = low.indexOf(kw, i)) !== -1){
-    out += escapeHtml(t.slice(i,j)) + '<mark class="hl">' + escapeHtml(t.slice(j, j+kw.length)) + '</mark>';
-    i = j + kw.length;
+  const q = searchQuery();
+  const needles = [...new Set([q.full, ...q.toks])].filter(n => n && n.length >= 2).sort((a,b)=>b.length-a.length);
+  if(!needles.length) return escapeHtml(t);
+  const re = new RegExp(needles.map(n => n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'gi');
+  let out = '', i = 0, m;
+  while((m = re.exec(t)) !== null){
+    if(!m[0]){ re.lastIndex++; continue; }
+    out += escapeHtml(t.slice(i, m.index)) + '<mark class="hl">' + escapeHtml(m[0]) + '</mark>';
+    i = m.index + m[0].length;
   }
   return out + escapeHtml(t.slice(i));
 }
@@ -3100,6 +3151,15 @@ function mapUpdateLabels(){
   /* ไอคอนประเภทร้าน: โชว์เมื่อห้องบนจอกว้าง ≥ 30px (จอเล็กตอนดูทั้งชั้นจะไม่รก) */
   mapEl('mapIcons').querySelectorAll('.m-ic').forEach(d=>d.classList.toggle('show', (+d.dataset.w)*MV.s >= 30));
   /* ชื่อร้านโชว์เมื่อห้องบนจอกว้างพอสำหรับความยาวชื่อ (ประมาณ 6.4px/ตัวอักษร) — กันตัวหนังสือซ้อนห้องข้างๆ */
+  /* v33: เลขห้องว่างที่อยู่ชิดกันจะซ้อนทับกัน ("Stock2/01" ทับ "Stock2/02") → ซ่อนอันที่ชนอันก่อนหน้า
+     คำนวณตามระดับซูมปัจจุบัน (ตัวอักษรขนาดคงที่บนจอ 9.5px ≈ 5.9px/ตัว) ซูมเข้าแล้วจะกลับมาแสดงครบ */
+  const boxes = [], cw = 5.9/MV.s, chh = 6.5/MV.s;
+  svg.querySelectorAll('.m-en').forEach(t=>{
+    const x = +t.getAttribute('x'), y = +t.getAttribute('y'), hw = t.textContent.length*cw/2 + 2/MV.s;
+    const hit = boxes.some(b => Math.abs(b[0]-x) < b[2]+hw && Math.abs(b[1]-y) < chh*2);
+    t.classList.toggle('clash', hit && !t.parentNode.classList.contains('sel'));
+    if(!hit) boxes.push([x, y, hw]);
+  });
   svg.querySelectorAll('.m-t').forEach(t=>{
     const need = t.textContent.length*6.4 + 8;
     t.classList.toggle('show', (+t.dataset.w)*MV.s >= need || t.parentNode.classList.contains('sel'));
